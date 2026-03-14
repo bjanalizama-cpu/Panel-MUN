@@ -28,17 +28,35 @@
     window.isDelegado = isDelegado;
 
     if(isDelegado) {
-      // Hide main app, show delegate screen
-      window.addEventListener('DOMContentLoaded', () => {
-        document.getElementById('app-main').style.display='none';
-        document.getElementById('app-delegado').style.display='block';
-      });
+      // Hide main app, show delegate screen - wait for DOM
+      function showDelegadoScreen() {
+        const main = document.getElementById('app-main');
+        const delegado = document.getElementById('app-delegado');
+        if(main && delegado) {
+          main.style.display='none';
+          delegado.style.display='block';
+        } else {
+          setTimeout(showDelegadoScreen, 100);
+        }
+      }
+      if(document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', showDelegadoScreen);
+      } else {
+        showDelegadoScreen();
+      }
 
       // Listen for voting state changes
       onSnapshot(votingRef, (snap) => {
         if(!snap.exists()) return;
         const data = snap.data();
         window.updateDelegadoUI && window.updateDelegadoUI(data);
+      });
+
+      // Also listen for session data to get committee info
+      onSnapshot(sessionRef, (snap) => {
+        if(!snap.exists()) return;
+        const data = snap.data();
+        if(data.committee) window.updateDelegadoComite && window.updateDelegadoComite(data.committee);
       });
 
       // Delegate votes
@@ -1623,15 +1641,27 @@ document.getElementById('motion-input')?.addEventListener('input', scheduleSave)
   <div id="delegado-login" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:2rem;gap:20px;">
     <img src="https://flagcdn.com/h120/un.png" alt="ONU" style="height:80px;opacity:0.9;" onerror="this.style.display='none'" />
     <div style="font-size:22px;font-weight:500;color:#fff;text-align:center;">Panel de la Mesa Directiva</div>
-    <div style="font-size:14px;color:rgba(255,255,255,0.75);text-align:center;">Ingresa con tu delegación</div>
-    <div style="background:#fff;border-radius:16px;padding:24px;width:100%;max-width:320px;display:flex;flex-direction:column;gap:14px;">
+    <div style="font-size:14px;color:rgba(255,255,255,0.75);text-align:center;margin-bottom:4px;">Vista del delegado</div>
+    <div style="background:#fff;border-radius:16px;padding:24px;width:100%;max-width:340px;display:flex;flex-direction:column;gap:14px;">
       <div>
-        <label style="font-size:12px;color:#888;text-transform:uppercase;letter-spacing:0.05em;">Tu país</label>
-        <select id="delegado-pais" style="width:100%;margin-top:4px;font-size:15px;padding:10px;border-radius:8px;border:0.5px solid #ccc;background:#f4f4f0;color:#1a1a18;">
+        <label style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.05em;">Comité</label>
+        <select id="delegado-comite-sel" style="width:100%;margin-top:4px;font-size:14px;padding:10px;border-radius:8px;border:0.5px solid #ccc;background:#f4f4f0;color:#1a1a18;">
+          <option value="">— Seleccionar comité —</option>
+          <option value="AG">Asamblea General</option>
+          <option value="CSNU">Consejo de Seguridad</option>
+          <option value="ECOSOC">ECOSOC</option>
+          <option value="CDH">Consejo de Derechos Humanos</option>
+          <option value="OIM">OIM</option>
+          <option value="ONUMUJERES">ONU Mujeres</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.05em;">País / Delegación</label>
+        <select id="delegado-pais" style="width:100%;margin-top:4px;font-size:14px;padding:10px;border-radius:8px;border:0.5px solid #ccc;background:#f4f4f0;color:#1a1a18;">
           <option value="">— Seleccionar país —</option>
         </select>
       </div>
-      <button onclick="ingresarDelegado()" style="background:#009EDB;color:#fff;border:none;border-radius:8px;padding:12px;font-size:15px;font-weight:500;cursor:pointer;width:100%;">Ingresar a la sesión</button>
+      <button onclick="ingresarDelegado()" style="background:#009EDB;color:#fff;border:none;border-radius:8px;padding:14px;font-size:15px;font-weight:500;cursor:pointer;width:100%;">Ingresar a la sesión</button>
     </div>
   </div>
 
@@ -1640,7 +1670,7 @@ document.getElementById('motion-input')?.addEventListener('input', scheduleSave)
     <img src="https://flagcdn.com/h120/un.png" alt="ONU" style="height:60px;opacity:0.9;" onerror="this.style.display='none'" />
     <div id="delegado-flag-display" style="font-size:80px;line-height:1;"></div>
     <div id="delegado-nombre" style="font-size:24px;font-weight:500;color:#fff;text-align:center;"></div>
-    <div id="delegado-comite" style="font-size:13px;color:rgba(255,255,255,0.7);text-align:center;text-transform:uppercase;letter-spacing:0.08em;"></div>
+    <div id="delegado-comite-display" style="font-size:13px;color:rgba(255,255,255,0.7);text-align:center;text-transform:uppercase;letter-spacing:0.08em;"></div>
 
     <!-- Estado: esperando -->
     <div id="delegado-esperando" style="background:rgba(255,255,255,0.15);border-radius:12px;padding:20px 32px;text-align:center;">
@@ -1670,13 +1700,24 @@ document.getElementById('motion-input')?.addEventListener('input', scheduleSave)
 </div>
 
 <script>
-// Delegate screen logic
+// ── Delegate screen logic ──────────────────────────────────
+const COMMITTEE_NAMES_D = {
+  'AG':'Asamblea General','CSNU':'Consejo de Seguridad',
+  'ECOSOC':'ECOSOC','CDH':'Consejo de Derechos Humanos',
+  'OIM':'OIM','ONUMUJERES':'ONU Mujeres'
+};
+
+let miPais = null;
+let miComite = null;
+let yaVote = false;
+
 function poblarSelectPaises() {
   const sel = document.getElementById('delegado-pais');
   if(!sel) return;
-  // Use same COUNTRIES list from main app
+  sel.innerHTML = '<option value="">— Seleccionar país —</option>';
   if(typeof COUNTRIES !== 'undefined') {
-    COUNTRIES.forEach(c => {
+    const sorted = [...COUNTRIES].sort((a,b)=>a.name.localeCompare(b.name,'es'));
+    sorted.forEach(c => {
       const o = document.createElement('option');
       o.value = c.name;
       o.textContent = c.name;
@@ -1685,45 +1726,51 @@ function poblarSelectPaises() {
   }
 }
 
-let miPais = null;
-let yaVote = false;
-
 function ingresarDelegado() {
-  const sel = document.getElementById('delegado-pais');
-  if(!sel.value) return;
-  miPais = sel.value;
+  const selPais = document.getElementById('delegado-pais');
+  const selComite = document.getElementById('delegado-comite-sel');
+  if(!selPais.value){ alert('Selecciona tu país.'); return; }
+  if(!selComite.value){ alert('Selecciona el comité.'); return; }
+
+  miPais = selPais.value;
+  miComite = selComite.value;
+
+  // Lock inputs permanently
+  selPais.disabled = true;
+  selComite.disabled = true;
+
+  // Switch screens
   document.getElementById('delegado-login').style.display='none';
   document.getElementById('delegado-sala').style.display='flex';
+
+  // Show country info
   document.getElementById('delegado-nombre').textContent = miPais;
-  // Show flag
+  document.getElementById('delegado-comite-display').textContent = COMMITTEE_NAMES_D[miComite]||miComite;
   const flagCode = typeof FLAGS !== 'undefined' ? FLAGS[miPais] : null;
   if(flagCode) {
     document.getElementById('delegado-flag-display').innerHTML =
-      `<img src="https://flagcdn.com/h120/${flagCode}.png" style="height:80px;border-radius:4px;" />`;
+      `<img src="https://flagcdn.com/h120/${flagCode}.png" style="height:80px;border-radius:4px;box-shadow:0 4px 16px rgba(0,0,0,0.2);" />`;
   }
 }
 
+window.updateDelegadoComite = function(committee) {
+  // Auto-select committee if chair already has one set
+  const sel = document.getElementById('delegado-comite-sel');
+  if(sel && !sel.disabled && committee) sel.value = committee;
+};
+
 window.updateDelegadoUI = function(data) {
   if(!data) return;
-  // Update committee name
-  const names = {'AG':'Asamblea General','CSNU':'Consejo de Seguridad','ECOSOC':'ECOSOC',
-    'CDH':'Consejo de Derechos Humanos','OIM':'OIM','ONUMUJERES':'ONU Mujeres'};
-  if(data.committee) document.getElementById('delegado-comite').textContent = names[data.committee]||data.committee;
-
   if(data.open && !yaVote) {
-    // Show voting panel
     document.getElementById('delegado-esperando').style.display='none';
     document.getElementById('delegado-votado').style.display='none';
     document.getElementById('delegado-votando').style.display='block';
     document.getElementById('delegado-mocion').textContent = data.motion || 'Sin nombre';
-    // Reset buttons
     ['yes','no','abs'].forEach(t => {
       const btn = document.getElementById('btn-voto-'+t);
-      if(btn) btn.disabled = false;
+      if(btn){ btn.disabled=false; btn.style.opacity='1'; }
     });
-    yaVote = false;
   } else if(!data.open) {
-    // Voting closed
     yaVote = false;
     document.getElementById('delegado-votando').style.display='none';
     document.getElementById('delegado-votado').style.display='none';
@@ -1734,8 +1781,11 @@ window.updateDelegadoUI = function(data) {
 window.votoDelegadoEmitido = function(tipo) {
   yaVote = true;
   document.getElementById('delegado-votando').style.display='none';
-  const labels = {'yes':'A favor','no':'En contra','abs':'Abstención'};
-  document.getElementById('delegado-voto-confirmacion').textContent = '✓ ' + (labels[tipo]||tipo);
+  const labels = {'yes':'A favor ✓','no':'En contra ✓','abs':'Abstención ✓'};
+  const colors = {'yes':'#27500A','no':'#791F1F','abs':'#633806'};
+  const el = document.getElementById('delegado-voto-confirmacion');
+  el.textContent = labels[tipo]||tipo;
+  el.style.color = colors[tipo]||'#fff';
   document.getElementById('delegado-votado').style.display='block';
 };
 
@@ -1744,17 +1794,19 @@ function votarDelegado(tipo) {
   yaVote = true;
   ['yes','no','abs'].forEach(t => {
     const btn = document.getElementById('btn-voto-'+t);
-    if(btn) btn.disabled = true;
+    if(btn){ btn.disabled=true; btn.style.opacity='0.4'; }
   });
   if(window.emitirVoto) window.emitirVoto(tipo, miPais);
   window.votoDelegadoEmitido(tipo);
 }
 
-// Init delegate screen if needed
+// Init
 if(window.location.search.includes('delegado')) {
-  window.addEventListener('DOMContentLoaded', () => {
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded', poblarSelectPaises);
+  } else {
     poblarSelectPaises();
-  });
+  }
 }
 </script>
 
