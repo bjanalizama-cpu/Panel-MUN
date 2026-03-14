@@ -6,9 +6,9 @@
   <title>Panel de la Mesa Directiva</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: system-ui, -apple-system, sans-serif; background: #f4f4f0; color: #1a1a18; min-height: 100vh; padding: 1rem; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #009EDB; color: #1a1a18; min-height: 100vh; padding: 1rem; }
     .app { max-width: 960px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
-    h1 { font-size: 15px; font-weight: 500; color: #666; text-align: center; margin-bottom: 4px; }
+    h1 { font-size: 15px; font-weight: 500; color: rgba(255,255,255,0.85); text-align: center; margin-bottom: 4px; }
     .header-bar { background: #fff; border: 0.5px solid #ddd; border-radius: 12px; padding: 14px 20px; display: flex; align-items: center; gap: 14px; }
     .committee-label { font-size: 13px; font-weight: 500; color: #888; white-space: nowrap; }
     .committee-select, .committee-input { flex: 1; font-size: 15px; font-weight: 500; padding: 6px 10px; border-radius: 8px; border: 0.5px solid #ccc; background: #f4f4f0; color: #1a1a18; }
@@ -263,7 +263,7 @@ const COUNTRIES = [
   "Islas Marshall","Islas Salomón","Israel","Italia","Jamaica","Japón","Jordania",
   "Kazajistán","Kenia","Kirguistán","Kiribati","Kuwait","Laos","Lesoto","Letonia","Líbano",
   "Liberia","Libia","Liechtenstein","Lituania","Luxemburgo","Madagascar","Malasia","Malaui",
-  "Maldivas","Malí","Malta","Marruecos","Mauricio","Mauritania","México","Micronesia",
+  "Maldivas","Malí","Macedonia del Norte","Malta","Marruecos","Mauricio","Mauritania","México","Micronesia",
   "Moldavia","Mónaco","Mongolia","Montenegro","Mozambique","Namibia","Nauru","Nepal",
   "Nicaragua","Níger","Nigeria","Noruega","Nueva Zelanda","Omán","Países Bajos","Pakistán",
   "Palaos","Panamá","Papúa Nueva Guinea","Paraguay","Perú","Polonia","Portugal",
@@ -301,7 +301,7 @@ const FLAGS = {
   "Kuwait":"kw","Laos":"la","Lesoto":"ls","Letonia":"lv","Líbano":"lb",
   "Liberia":"lr","Libia":"ly","Liechtenstein":"li","Lituania":"lt","Luxemburgo":"lu",
   "Madagascar":"mg","Malasia":"my","Malaui":"mw","Maldivas":"mv","Malí":"ml",
-  "Malta":"mt","Marruecos":"ma","Mauricio":"mu","Mauritania":"mr","México":"mx",
+  "Macedonia del Norte":"mk","Malta":"mt","Marruecos":"ma","Mauricio":"mu","Mauritania":"mr","México":"mx",
   "Micronesia":"fm","Moldavia":"md","Mónaco":"mc","Mongolia":"mn","Montenegro":"me",
   "Mozambique":"mz","Namibia":"na","Nauru":"nr","Nepal":"np","Nicaragua":"ni",
   "Níger":"ne","Nigeria":"ng","Noruega":"no","Nueva Zelanda":"nz","Omán":"om",
@@ -339,10 +339,10 @@ let projecting=false;
 const COMMITTEE_MEMBERS = {
   'AG': null, // todos los 191
   'ONUMUJERES': null, // todos los 191
-  'CSNU': ["Alemania","China","Ecuador","Estados Unidos","Francia","Grecia","Guyana","Panamá","Reino Unido","República de Corea","Rusia","Sierra Leona","Eslovenia","Somalia","Suiza"],
-  'ECOSOC': ["Albania","Alemania","Angola","Arabia Saudita","Argelia","Argentina","Armenia","Australia","Austria","Azerbaiyán","Bangladesh","Bélgica","Bolivia","Brasil","Burkina Faso","Camerún","Canadá","Chad","Chile","China","Colombia","Congo","Costa Rica","Cuba","Dinamarca","Ecuador","Egipto","El Salvador","España","Estados Unidos","Etiopía","Filipinas","Francia","Ghana","Guatemala","Guinea","India","Indonesia","Irán","Italia","Japón","Kazajistán","Kenia","Madagascar","Malasia","Marruecos","México","Moldova","Mozambique","Namibia","Nicaragua","Nigeria","Noruega","Países Bajos","Pakistán","Paraguay","Perú","Polonia","Portugal","Reino Unido","República Democrática del Congo","Rumania","Rusia","Rwanda","Senegal","Sierra Leona","Sri Lanka","Sudáfrica","Suecia","Suiza","Tailandia","Tanzania","Togo","Türkiye","Ucrania","Uganda","Uruguay","Venezuela","Vietnam","Zambia","Zimbabwe"],
-  'CDH': ["Alemania","Angola","Argentina","Bangladesh","Bélgica","Benín","Bolivia","Brasil","Bulgaria","Burkina Faso","Camerún","China","Costa de Marfil","Costa Rica","Cuba","Dinamarca","Ecuador","Eritrea","Etiopía","Filipinas","Finlandia","Francia","Gabón","Georgia","Ghana","Guatemala","Honduras","India","Indonesia","Japón","Kazajistán","Kenia","Kirguistán","Luxemburgo","Malawi","Maldivas","Marruecos","Mauritania","México","Montenegro","Nepal","Nigeria","Países Bajos","Paraguay","Qatar","Reino Unido","República Checa","República Dominicana","Rumania","Senegal","Somalia","Sudán","Sudáfrica","Ucrania","Vietnam"],
-  'OIM': ["Afganistán","Albania","Alemania","Andorra","Angola","Antigua y Barbuda","Arabia Saudita","Argelia","Argentina","Armenia","Australia","Austria","Azerbaiyán","Bahamas","Bahrein","Bangladesh","Bélgica","Belice","Benín","Bolivia","Bosnia y Herzegovina","Botsuana","Brasil","Bulgaria","Burkina Faso","Burundi","Cabo Verde","Camboya","Camerún","Canadá","Catar","Chad","Chile","Chipre","Colombia","Comoras","Congo","Corea del Sur","Costa de Marfil","Costa Rica","Croacia","Cuba","Dinamarca","Ecuador","Egipto","El Salvador","Emiratos Árabes Unidos","Eslovaquia","Eslovenia","España","Estados Unidos","Estonia","Etiopía","Filipinas","Finlandia","Francia","Gabón","Gambia","Georgia","Ghana","Granada","Grecia","Guatemala","Guinea","Guinea Ecuatorial","Guyana","Haití","Honduras","Hungría","India","Indonesia","Irak","Irán","Irlanda","Islandia","Israel","Italia","Jamaica","Japón","Jordania","Kazajistán","Kenia","Kirguistán","Kuwait","Laos","Lesoto","Letonia","Líbano","Liberia","Libia","Lituania","Luxemburgo","Madagascar","Malasia","Malaui","Maldivas","Malí","Malta","Marruecos","Mauricio","Mauritania","México","Moldavia","Mongolia","Montenegro","Mozambique","Namibia","Nepal","Nicaragua","Níger","Nigeria","Noruega","Nueva Zelanda","Omán","Países Bajos","Pakistán","Panamá","Papúa Nueva Guinea","Paraguay","Perú","Polonia","Portugal","Reino Unido","República Centroafricana","República Checa","República Democrática del Congo","República Dominicana","Ruanda","Rumania","Rusia","Samoa","Senegal","Serbia","Sierra Leona","Singapur","Somalia","Sri Lanka","Sudáfrica","Sudán","Sudán del Sur","Suecia","Suiza","Surinam","Tailandia","Tanzania","Tayikistán","Timor Oriental","Togo","Trinidad y Tobago","Túnez","Turquía","Ucrania","Uganda","Uruguay","Uzbekistán","Vanuatu","Venezuela","Vietnam","Yemen","Yibuti","Zambia","Zimbabue"]
+  'CSNU': ["China","Francia","Reino Unido","Rusia","Estados Unidos","Bahrein","Colombia","República Democrática del Congo","Dinamarca","Grecia","Letonia","Liberia","Pakistán","Panamá","Somalia"],
+  'ECOSOC': ["Argelia","Antigua y Barbuda","Armenia","Australia","Austria","Azerbaiyán","Bangladesh","Bélgica","Bolivia","Brasil","Burundi","Camerún","Canadá","Chad","Chile","China","Colombia","Congo","Costa de Marfil","Costa Rica","Croacia","Ecuador","Egipto","España","Estados Unidos","Finlandia","Francia","Haití","India","Japón","Kazajistán","Kenia","Líbano","Mauricio","Mauritania","México","Mozambique","Nepal","Nigeria","Noruega","Países Bajos","Pakistán","Paraguay","Perú","Polonia","Reino Unido","Ruanda","Rusia","San Cristóbal y Nieves","Senegal","Sierra Leona","Sri Lanka","Sudáfrica","Suecia","Suiza","Surinam","Tanzania","Turkmenistán","Ucrania","Uruguay","Uzbekistán","Zambia"],
+  'CDH': ["Albania","Angola","Brasil","Bulgaria","Burundi","Chile","China","Colombia","Corea del Sur","Costa de Marfil","Cuba","Ecuador","Egipto","Eslovenia","Estonia","Etiopía","Filipinas","Francia","Gambia","Ghana","Grecia","India","Indonesia","Irak","Islandia","Italia","Japón","Kazajistán","Kenia","Kuwait","Letonia","Luxemburgo","Malaui","Malasia","Mauritania","Mauricio","México","Montenegro","Países Bajos","Pakistán","República Dominicana","Senegal","Somalia","Sudáfrica","Tailandia","Reino Unido","Vietnam"],
+  'OIM': ["Afganistán","Albania","Alemania","Andorra","Angola","Antigua y Barbuda","Arabia Saudita","Argelia","Argentina","Armenia","Australia","Austria","Azerbaiyán","Bahamas","Bahrein","Bangladesh","Bélgica","Belice","Benín","Bolivia","Bosnia y Herzegovina","Botsuana","Brasil","Bulgaria","Burkina Faso","Burundi","Cabo Verde","Camboya","Camerún","Canadá","Catar","Chad","Chile","Chipre","Colombia","Comoras","Congo","Corea del Sur","Costa de Marfil","Costa Rica","Croacia","Cuba","Dinamarca","Ecuador","Egipto","El Salvador","Emiratos Árabes Unidos","Eslovaquia","Eslovenia","España","Estados Unidos","Estonia","Etiopía","Filipinas","Finlandia","Francia","Gabón","Gambia","Georgia","Ghana","Granada","Grecia","Guatemala","Guinea","Guinea Ecuatorial","Guyana","Haití","Honduras","Hungría","India","Indonesia","Irak","Irán","Irlanda","Islandia","Israel","Italia","Jamaica","Japón","Jordania","Kazajistán","Kenia","Kirguistán","Kuwait","Laos","Lesoto","Letonia","Líbano","Liberia","Libia","Lituania","Luxemburgo","Madagascar","Malasia","Malaui","Maldivas","Malí","Macedonia del Norte","Malta","Marruecos","Mauricio","Mauritania","México","Moldavia","Mongolia","Montenegro","Mozambique","Namibia","Nepal","Nicaragua","Níger","Nigeria","Noruega","Nueva Zelanda","Omán","Países Bajos","Pakistán","Panamá","Papúa Nueva Guinea","Paraguay","Perú","Polonia","Portugal","Reino Unido","República Centroafricana","República Checa","República Democrática del Congo","República Dominicana","Ruanda","Rumania","Rusia","Samoa","Senegal","Serbia","Sierra Leona","Singapur","Somalia","Sri Lanka","Sudáfrica","Sudán","Sudán del Sur","Suecia","Suiza","Surinam","Tailandia","Tanzania","Tayikistán","Timor Oriental","Togo","Trinidad y Tobago","Túnez","Turquía","Ucrania","Uganda","Uruguay","Uzbekistán","Vanuatu","Venezuela","Vietnam","Yemen","Yibuti","Zambia","Zimbabue"]
 };
 
 const COMMITTEE_NAMES = {
@@ -607,3 +607,4 @@ renderCountries();renderSpeakers();
 </script>
 </body>
 </html>
+
