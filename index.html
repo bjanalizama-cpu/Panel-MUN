@@ -1017,7 +1017,7 @@ function updateVoteResult(){
   res.className='result-label '+(passed?'passed':'failed');
 }
 function vote(t){
-  const maxVotos=isCSNU?15:getVoters();
+  const maxVotos=getVoters();
   const totalActual=votes.yes+votes.no+votes.abs;
   if(maxVotos>0&&totalActual>=maxVotos) return; // no más votos que P+V
   votes[t]++;
