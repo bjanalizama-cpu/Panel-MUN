@@ -12,7 +12,6 @@
     .header-bar { background: #fff; border: 0.5px solid #ddd; border-radius: 12px; padding: 14px 20px; display: flex; align-items: center; gap: 14px; }
     .committee-label { font-size: 13px; font-weight: 500; color: #888; white-space: nowrap; }
     .committee-select, .committee-input { flex: 1; font-size: 15px; font-weight: 500; padding: 6px 10px; border-radius: 8px; border: 0.5px solid #ccc; background: #f4f4f0; color: #1a1a18; }
-    .committee-input { display: none; }
     .committee-input:focus, .committee-select:focus { outline: none; background: #fff; }
     .other-btn { font-size: 12px; color: #888; background: none; border: none; cursor: pointer; white-space: nowrap; }
     .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
@@ -121,7 +120,7 @@
       <option value="CSNU">Consejo de Seguridad (CSNU)</option>
       <option value="otro">Otro...</option>
     </select>
-    <input class="committee-input" id="committee-input" type="text" placeholder="Nombre del comité" />
+    <input class="committee-input" id="committee-input" type="text" placeholder="Nombre del comité" style="display:none;" />
     <button class="other-btn" id="toggle-custom" onclick="toggleCustom()" style="display:none;">Elegir de lista</button>
   </div>
 
@@ -447,3 +446,4 @@ renderCountries();renderSpeakers();
 </script>
 </body>
 </html>
+
