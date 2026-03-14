@@ -516,16 +516,16 @@ function toggleCountries(){
 }
 function getVoters(){return getActiveMembers().filter(c=>c.status==='PV').length;}
 function updateQuorum(){
-  const total=isCSNU?15:getVoters();
+  const total=getVoters();
   if(total===0){
     ['q-total','q-quorum','q-needed'].forEach(id=>document.getElementById(id).textContent='—');
     return;
   }
   document.getElementById('q-total').textContent=total;
   if(isCSNU){
-    document.getElementById('q-quorum').textContent='9/15';
+    document.getElementById('q-quorum').textContent=Math.ceil(total/2)+1;
     document.getElementById('q-needed').textContent='9';
-    document.getElementById('q-needed-lbl').textContent='Votos afirmativos requeridos';
+    document.getElementById('q-needed-lbl').textContent='Votos afirmativos requeridos (mín. 9)';
   } else {
     const quorum=Math.ceil(total/2)+1;
     document.getElementById('q-quorum').textContent=quorum;
@@ -544,7 +544,7 @@ function updateQuorum(){
 }
 
 function updateEmitidos(){
-  const total=isCSNU?15:getVoters();
+  const total=getVoters();
   const emitidos=votes.yes+votes.no+votes.abs;
   const el=document.getElementById('q-emitidos');
   if(el){
@@ -1006,7 +1006,7 @@ function updateVoteResult(){
   let passed=false;
   if(isCSNU){
     const vetoed=p5Vetoed.size>0;
-    passed=votes.yes>=9&&!vetoed;
+    passed=votes.yes>=9&&!vetoed&&getVoters()>0;
     res.textContent=vetoed?'Vetado por miembro P5':passed?'Resolución aprobada (9+ votos)':'Resolución rechazada (faltan votos)';
   } else {
     const emitidos=votes.yes+votes.no;
