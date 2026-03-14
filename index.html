@@ -129,10 +129,22 @@
 <div class="projection-overlay" id="projection-overlay">
   <button class="proj-close" onclick="closeProjection()">Cerrar proyección ✕</button>
   <img class="proj-un-logo" src="https://flagcdn.com/h120/un.png" alt="ONU" onerror="this.style.display='none'" />
-  <div class="proj-flag" id="proj-flag"></div>
-  <div class="proj-country" id="proj-country">—</div>
-  <div class="proj-speaking">en uso de la palabra</div>
-  <div class="proj-timer" id="proj-timer">1:30</div>
+
+  <!-- Modo oradores (sesión formal) -->
+  <div id="proj-mode-speakers">
+    <div class="proj-flag" id="proj-flag"></div>
+    <div class="proj-country" id="proj-country">—</div>
+    <div class="proj-speaking">en uso de la palabra</div>
+    <div class="proj-timer" id="proj-timer">1:30</div>
+  </div>
+
+  <!-- Modo cuenta regresiva (sesión informal / receso) -->
+  <div id="proj-mode-countdown" style="display:none;">
+    <div class="proj-speaking" id="proj-countdown-label">Sesión informal</div>
+    <div class="proj-timer" id="proj-countdown-timer" style="font-size:100px;">—</div>
+    <div class="proj-speaking" style="font-size:14px;margin-top:8px;" id="proj-countdown-status"></div>
+  </div>
+
   <div class="proj-committee" id="proj-committee"></div>
 </div>
 
@@ -224,30 +236,17 @@
           <button class="add-btn" onclick="startCountdown()">Iniciar</button>
           <button class="add-btn" id="btn-countdown-pause" onclick="pauseCountdown()" style="display:none;">Pausar</button>
           <button class="add-btn" onclick="stopCountdown()">Detener</button>
+          <button class="project-btn" onclick="openProjectionCountdown('informal')" style="margin-left:4px;">Proyectar</button>
         </div>
         <div id="countdown-display" style="font-size:42px;font-weight:500;color:#1a1a18;text-align:center;display:none;"></div>
       </div>
 
-      <!-- Panel receso: solo temporizador -->
+      <!-- Panel receso -->
       <div id="panel-receso" style="display:none;background:#FAEEDA;border-radius:8px;padding:14px;text-align:center;">
-        <div style="font-size:11px;color:#633806;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">Duración del receso</div>
-        <div style="display:flex;gap:6px;justify-content:center;margin-bottom:8px;flex-wrap:wrap;">
-          <button class="preset-btn" onclick="setCountdown(5)">5 min</button>
-          <button class="preset-btn" onclick="setCountdown(10)">10 min</button>
-          <button class="preset-btn" onclick="setCountdown(15)">15 min</button>
-          <button class="preset-btn" onclick="setCountdown(20)">20 min</button>
-        </div>
-        <div style="display:flex;align-items:center;gap:6px;justify-content:center;margin-bottom:10px;">
-          <span style="font-size:12px;color:#888;">Personalizado:</span>
-          <input type="number" id="countdown-input-r" min="1" max="60" placeholder="min" style="width:60px;font-size:13px;padding:4px 6px;border-radius:6px;border:0.5px solid #ccc;background:#fff;color:#1a1a18;text-align:center;" />
-          <span style="font-size:12px;color:#888;">min</span>
-        </div>
-        <div style="display:flex;gap:6px;justify-content:center;margin-bottom:10px;">
-          <button class="add-btn" onclick="startCountdownR()">Iniciar</button>
-          <button class="add-btn" id="btn-countdown-pause-r" onclick="pauseCountdownR()" style="display:none;">Pausar</button>
-          <button class="add-btn" onclick="stopCountdownR()">Detener</button>
-        </div>
-        <div id="countdown-display-r" style="font-size:42px;font-weight:500;color:#633806;text-align:center;display:none;"></div>
+        <div style="font-size:32px;margin-bottom:8px;">☕</div>
+        <div style="font-size:16px;font-weight:500;color:#633806;margin-bottom:6px;">Sesión en receso</div>
+        <div style="font-size:13px;color:#854F0B;">El tiempo de sesión está detenido.</div>
+        <div style="font-size:12px;color:#854F0B;margin-top:4px;">Reinicia el temporizador al retomar la sesión.</div>
       </div>
 
     </div>
@@ -637,6 +636,12 @@ function setSesion(tipo){
   document.getElementById('panel-formal').style.display=tipo==='formal'?'':'none';
   document.getElementById('panel-informal').style.display=tipo==='informal'?'':'none';
   document.getElementById('panel-receso').style.display=tipo==='receso'?'':'none';
+  // Pause sesion timer on receso, resume on formal/informal
+  if(tipo==='receso'&&sesionRunning){
+    clearInterval(sesionInterval);sesionRunning=false;
+    document.getElementById('btn-sesion-start').textContent='Reanudar';
+    document.getElementById('btn-sesion-start').className='btn-main paused';
+  }
 }
 
 // Cronómetro del panel formal (independiente del de oradores)
@@ -698,7 +703,8 @@ function startCountdownR(){
     if(countdownSecsR>0){
       countdownSecsR--;
       disp.textContent=fmtSesion(countdownSecsR);
-      if(countdownSecsR===0){clearInterval(countdownIntervalR);countdownRunningR=false;disp.textContent='¡Receso terminado!';document.getElementById('btn-countdown-pause-r').style.display='none';}
+      if(projecting&&projMode==='countdown'&&projCountdownType==='receso') updateProjectionCountdown();
+      if(countdownSecsR===0){clearInterval(countdownIntervalR);countdownRunningR=false;disp.textContent='¡Receso terminado!';document.getElementById('btn-countdown-pause-r').style.display='none';if(projecting&&projMode==='countdown') updateProjectionCountdown();}
     }
   },1000);
 }
@@ -776,10 +782,12 @@ function startCountdown(){
       disp.textContent=fmtSesion(countdownSecs);
       if(countdownSecs<=300) disp.style.color='#BA7517';
       if(countdownSecs<=60) disp.style.color='#A32D2D';
+      if(projecting&&projMode==='countdown'&&projCountdownType==='informal') updateProjectionCountdown();
       if(countdownSecs===0){
         clearInterval(countdownInterval);countdownRunning=false;
         disp.textContent='¡Tiempo agotado!';
         document.getElementById('btn-countdown-pause').style.display='none';
+        if(projecting&&projMode==='countdown') updateProjectionCountdown();
       }
     }
   },1000);
@@ -835,6 +843,9 @@ function addSpeaker(){
 function removeSpeaker(i){speakers.splice(i,1);renderSpeakers();}
 function nextSpeaker(){if(speakers.length>0){speakers.shift();renderSpeakers();resetTimer();}}
 
+let projMode='speakers'; // 'speakers' | 'countdown'
+let projCountdownType='informal';
+
 function updateProjection(){
   const country=speakers.length>0?speakers[0]:'—';
   document.getElementById('proj-country').textContent=country;
@@ -842,14 +853,40 @@ function updateProjection(){
   document.getElementById('proj-committee').textContent=getCommitteeName();
   document.getElementById('proj-timer').textContent=fmt(timerSecs);
 }
+
+function updateProjectionCountdown(){
+  if(projMode!=='countdown') return;
+  const secs = projCountdownType==='receso' ? countdownSecsR : countdownSecs;
+  const disp = document.getElementById('proj-countdown-timer');
+  disp.textContent = secs>0 ? fmtSesion(secs) : '¡Tiempo agotado!';
+}
+
 function openProjection(){
   if(speakers.length===0){alert('Agrega al menos un orador a la lista primero.');return;}
+  projMode='speakers';
+  document.getElementById('proj-mode-speakers').style.display='';
+  document.getElementById('proj-mode-countdown').style.display='none';
   projecting=true;
   updateProjection();
   document.getElementById('projection-overlay').classList.add('active');
 }
+
+function openProjectionCountdown(tipo){
+  projMode='countdown';
+  projCountdownType=tipo;
+  document.getElementById('proj-mode-speakers').style.display='none';
+  document.getElementById('proj-mode-countdown').style.display='';
+  const labels={'informal':'Sesión informal','receso':'Receso'};
+  document.getElementById('proj-countdown-label').textContent=labels[tipo]||tipo;
+  document.getElementById('proj-committee').textContent=getCommitteeName();
+  updateProjectionCountdown();
+  projecting=true;
+  document.getElementById('projection-overlay').classList.add('active');
+}
+
 function closeProjection(){
   projecting=false;
+  projMode='speakers';
   document.getElementById('projection-overlay').classList.remove('active');
 }
 
@@ -903,4 +940,3 @@ renderCountries();renderSpeakers();
 </script>
 </body>
 </html>
-
