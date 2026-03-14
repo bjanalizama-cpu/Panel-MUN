@@ -177,10 +177,17 @@
     <div class="panel">
       <div class="panel-title">Cronómetro de oradores</div>
       <div class="timer-presets">
+        <button class="preset-btn" onclick="setTimer(30)">30 seg</button>
+        <button class="preset-btn" onclick="setTimer(45)">45 seg</button>
         <button class="preset-btn" onclick="setTimer(60)">1 min</button>
         <button class="preset-btn" onclick="setTimer(90)">1:30</button>
         <button class="preset-btn" onclick="setTimer(120)">2 min</button>
-        <button class="preset-btn" onclick="setTimer(180)">3 min</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;justify-content:center;margin-bottom:8px;">
+        <span style="font-size:12px;color:#888;">Personalizado:</span>
+        <input type="number" id="custom-time" min="1" max="60" placeholder="min" style="width:52px;font-size:13px;padding:4px 6px;border-radius:6px;border:0.5px solid #ccc;background:#f4f4f0;color:#1a1a18;text-align:center;" />
+        <span style="font-size:12px;color:#888;">min</span>
+        <button class="preset-btn" onclick="setCustomTimer()" style="padding:3px 10px;">Aplicar</button>
       </div>
       <div class="timer-display" id="timer-display">1:30</div>
       <div class="timer-label" id="timer-label">Listo para iniciar</div>
@@ -198,6 +205,43 @@
         <select id="speaker-select"><option value="">— Agregar país —</option></select>
         <button class="add-btn" onclick="addSpeaker()">+ Agregar</button>
       </div>
+    </div>
+  </div>
+
+  <div class="panel full-row">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <div class="panel-title" style="margin-bottom:0;">Tipo de sesión</div>
+      <div style="display:flex;gap:6px;">
+        <button class="vtype-btn" id="btn-formal" onclick="setSesion('formal')" style="padding:5px 16px;">Sesión formal</button>
+        <button class="vtype-btn" id="btn-informal" onclick="setSesion('informal')" style="padding:5px 16px;">Cauce no formal</button>
+        <button class="vtype-btn" id="btn-receso" onclick="setSesion('receso')" style="padding:5px 16px;">Receso</button>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+      <div style="background:#f4f4f0;border-radius:8px;padding:12px;text-align:center;">
+        <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">Estado actual</div>
+        <div id="sesion-label" style="font-size:18px;font-weight:500;color:#1a1a18;">— Sin iniciar —</div>
+      </div>
+      <div style="background:#f4f4f0;border-radius:8px;padding:12px;text-align:center;">
+        <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Temporizador de sesión</div>
+        <div id="sesion-timer" style="font-size:28px;font-weight:500;color:#1a1a18;">0:00</div>
+        <div style="display:flex;gap:6px;justify-content:center;margin-top:6px;">
+          <button class="btn-main" id="btn-sesion-start" onclick="toggleSesionTimer()" style="padding:5px 14px;font-size:12px;">Iniciar</button>
+          <button class="btn-main" onclick="resetSesionTimer()" style="padding:5px 14px;font-size:12px;">Reiniciar</button>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:12px;">
+      <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">Cuenta regresiva de sesión</div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <input type="number" id="countdown-input" min="1" max="120" placeholder="minutos" style="width:80px;font-size:13px;padding:5px 8px;border-radius:6px;border:0.5px solid #ccc;background:#f4f4f0;color:#1a1a18;" />
+        <button class="preset-btn" onclick="setCountdown(15)">15 min</button>
+        <button class="preset-btn" onclick="setCountdown(30)">30 min</button>
+        <button class="preset-btn" onclick="setCountdown(45)">45 min</button>
+        <button class="preset-btn" onclick="setCountdown(60)">1 hora</button>
+        <button class="add-btn" onclick="startCountdown()" style="margin-left:4px;">Iniciar cuenta regresiva</button>
+      </div>
+      <div id="countdown-display" style="font-size:32px;font-weight:500;color:#1a1a18;text-align:center;margin-top:8px;display:none;"></div>
     </div>
   </div>
 
@@ -492,6 +536,104 @@ function resetTimer(){
   document.getElementById('btn-start').textContent='Iniciar';
   document.getElementById('btn-start').className='btn-main';
   document.getElementById('timer-label').textContent='Listo para iniciar';
+}
+function setCustomTimer(){
+  const val=parseInt(document.getElementById('custom-time').value);
+  if(val&&val>0&&val<=60){setTimer(val*60);}
+}
+
+// Sesión
+let sesionRunning=false,sesionInterval=null,sesionSecs=0;
+let countdownSecs=0,countdownRunning=false,countdownInterval=null;
+
+const SESION_LABELS={
+  'formal':'Sesión formal',
+  'informal':'Cauce no formal',
+  'receso':'Receso'
+};
+const SESION_COLORS={
+  'formal':'#27500A',
+  'informal':'#0C447C',
+  'receso':'#633806'
+};
+const SESION_BG={
+  'formal':'#EAF3DE',
+  'informal':'#E6F1FB',
+  'receso':'#FAEEDA'
+};
+
+function setSesion(tipo){
+  const lbl=document.getElementById('sesion-label');
+  lbl.textContent=SESION_LABELS[tipo];
+  lbl.style.color=SESION_COLORS[tipo];
+  lbl.parentElement.style.background=SESION_BG[tipo];
+  ['btn-formal','btn-informal','btn-receso'].forEach(id=>{
+    document.getElementById(id).className='vtype-btn';
+  });
+  const map={'formal':'btn-formal','informal':'btn-informal','receso':'btn-receso'};
+  document.getElementById(map[tipo]).className='vtype-btn active';
+}
+
+function fmtSesion(s){
+  const h=Math.floor(s/3600);
+  const m=Math.floor((s%3600)/60);
+  const sec=s%60;
+  if(h>0) return h+':'+(m<10?'0':'')+m+':'+(sec<10?'0':'')+sec;
+  return m+':'+(sec<10?'0':'')+sec;
+}
+
+function toggleSesionTimer(){
+  if(sesionRunning){
+    clearInterval(sesionInterval);sesionRunning=false;
+    document.getElementById('btn-sesion-start').textContent='Reanudar';
+    document.getElementById('btn-sesion-start').className='btn-main paused';
+  } else {
+    sesionRunning=true;
+    document.getElementById('btn-sesion-start').textContent='Pausar';
+    document.getElementById('btn-sesion-start').className='btn-main running';
+    sesionInterval=setInterval(()=>{
+      sesionSecs++;
+      document.getElementById('sesion-timer').textContent=fmtSesion(sesionSecs);
+    },1000);
+  }
+}
+function resetSesionTimer(){
+  clearInterval(sesionInterval);sesionRunning=false;sesionSecs=0;
+  document.getElementById('sesion-timer').textContent='0:00';
+  document.getElementById('btn-sesion-start').textContent='Iniciar';
+  document.getElementById('btn-sesion-start').className='btn-main';
+}
+
+function setCountdown(mins){
+  document.getElementById('countdown-input').value=mins;
+  countdownSecs=mins*60;
+  const disp=document.getElementById('countdown-display');
+  disp.style.display='block';
+  disp.textContent=fmtSesion(countdownSecs);
+  disp.style.color='#1a1a18';
+}
+function startCountdown(){
+  const val=parseInt(document.getElementById('countdown-input').value);
+  if(!val||val<=0) return;
+  if(countdownRunning){clearInterval(countdownInterval);countdownRunning=false;}
+  countdownSecs=val*60;
+  const disp=document.getElementById('countdown-display');
+  disp.style.display='block';
+  disp.textContent=fmtSesion(countdownSecs);
+  disp.style.color='#1a1a18';
+  countdownRunning=true;
+  countdownInterval=setInterval(()=>{
+    if(countdownSecs>0){
+      countdownSecs--;
+      disp.textContent=fmtSesion(countdownSecs);
+      if(countdownSecs<=300) disp.style.color='#BA7517';
+      if(countdownSecs<=60) disp.style.color='#A32D2D';
+      if(countdownSecs===0){
+        clearInterval(countdownInterval);countdownRunning=false;
+        disp.textContent='¡Tiempo agotado!';
+      }
+    }
+  },1000);
 }
 function renderSpeakers(){
   const el=document.getElementById('speakers-list');
