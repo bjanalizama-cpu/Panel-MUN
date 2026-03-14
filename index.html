@@ -160,7 +160,7 @@
       <div class="panel-title" style="margin-bottom:0;">Tipo de sesión</div>
       <div style="display:flex;gap:6px;">
         <button class="vtype-btn" id="btn-formal" onclick="setSesion('formal')" style="padding:5px 16px;">Sesión formal</button>
-        <button class="vtype-btn" id="btn-informal" onclick="setSesion('informal')" style="padding:5px 16px;">Cauce no formal</button>
+        <button class="vtype-btn" id="btn-informal" onclick="setSesion('informal')" style="padding:5px 16px;">Sesión informal</button>
         <button class="vtype-btn" id="btn-receso" onclick="setSesion('receso')" style="padding:5px 16px;">Receso</button>
       </div>
     </div>
@@ -548,7 +548,7 @@ let countdownSecs=0,countdownRunning=false,countdownInterval=null;
 
 const SESION_LABELS={
   'formal':'Sesión formal',
-  'informal':'Cauce no formal',
+  'informal':'Sesión informal',
   'receso':'Receso'
 };
 const SESION_COLORS={
@@ -722,4 +722,3 @@ renderCountries();renderSpeakers();
 </script>
 </body>
 </html>
-
