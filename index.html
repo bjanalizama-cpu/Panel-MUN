@@ -194,7 +194,7 @@
 
       <!-- Panel por defecto: oculto hasta elegir tipo -->
       <div id="panel-default" style="background:#f4f4f0;border-radius:8px;padding:14px;text-align:center;">
-        <div style="font-size:13px;color:#aaa;margin-top:20px;">Selecciona un tipo de sesión para ver las opciones correspondientes.</div>
+        <div id="panel-default-msg" style="font-size:13px;color:#aaa;margin-top:20px;">Selecciona un tipo de sesión para ver las opciones correspondientes.</div>
       </div>
 
       <!-- Panel formal: cronómetro de discursos -->
@@ -631,6 +631,8 @@ const SESION_BG={
 function setSesion(tipo){
   const lbl=document.getElementById('sesion-label');
   lbl.textContent=SESION_LABELS[tipo];
+  const msg=document.getElementById('panel-default-msg');
+  if(msg) msg.textContent=tipo==='formal'?'El cronómetro de oradores está activo en el panel izquierdo.':'Selecciona un tipo de sesión para ver las opciones correspondientes.';
   lbl.style.color=SESION_COLORS[tipo];
   document.getElementById('sesion-estado').style.background=SESION_BG[tipo];
   ['btn-formal','btn-informal','btn-receso'].forEach(id=>{
@@ -638,12 +640,12 @@ function setSesion(tipo){
   });
   const map={'formal':'btn-formal','informal':'btn-informal','receso':'btn-receso'};
   document.getElementById(map[tipo]).className='vtype-btn active';
-  // Show/hide context panels
-  document.getElementById('panel-default').style.display='none';
-  document.getElementById('panel-formal').style.display=tipo==='formal'?'':'none';
+  // Show/hide context panels — formal usa el cronómetro de oradores (izquierda), sin panel derecho
+  document.getElementById('panel-default').style.display=tipo==='formal'?'':'none';
+  document.getElementById('panel-formal').style.display='none';
   document.getElementById('panel-informal').style.display=tipo==='informal'?'':'none';
   document.getElementById('panel-receso').style.display=tipo==='receso'?'':'none';
-  // Ocultar cronómetro de oradores en sesión informal y receso
+  // Cronómetro de oradores visible solo en sesión formal
   document.getElementById('panel-cronometro-oradores').style.display=(tipo==='informal'||tipo==='receso')?'none':'';
   // Pause sesion timer on receso, resume on formal/informal
   if(tipo==='receso'&&sesionRunning){
