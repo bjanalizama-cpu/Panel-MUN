@@ -121,7 +121,7 @@
       <option value="CSNU">Consejo de Seguridad (CSNU)</option>
       <option value="otro">Otro...</option>
     </select>
-    <input class="committee-input" id="committee-input" type="text" placeholder="Nombre del comité" oninput="this.value=this.value" />
+    <input class="committee-input" id="committee-input" type="text" placeholder="Nombre del comité" />
     <button class="other-btn" id="toggle-custom" onclick="toggleCustom()" style="display:none;">Elegir de lista</button>
   </div>
 
@@ -252,19 +252,28 @@ let voteType='simple',isCSNU=false;
 let p5Vetoed=new Set();
 let searchFilter='';
 
-function toggleCustom(){
-  customMode=!customMode;
+function showCustomInput(){
+  document.getElementById('committee-select').style.display='none';
+  document.getElementById('toggle-custom').style.display='';
+  document.getElementById('toggle-custom').textContent='Elegir de lista';
   const inp=document.getElementById('committee-input');
-  document.getElementById('committee-select').style.display=customMode?'none':'';
-  inp.style.display=customMode?'':'none';
-  inp.removeAttribute('disabled');
-  document.getElementById('toggle-custom').textContent=customMode?'Elegir de lista':'Otro...';
-  if(customMode){inp.value='';setTimeout(()=>{inp.focus();},80);}
+  inp.style.display='';
+  inp.value='';
+  inp.focus();
+  customMode=true;
+}
+function toggleCustom(){
+  customMode=false;
+  document.getElementById('committee-input').style.display='none';
+  document.getElementById('committee-input').value='';
+  document.getElementById('committee-select').style.display='';
+  document.getElementById('committee-select').value='';
+  document.getElementById('toggle-custom').style.display='none';
 }
 function onCommitteeChange(){
   const val=document.getElementById('committee-select').value;
-  if(val==='otro'){toggleCustom();document.getElementById('committee-select').value='';return;}
-  document.getElementById('toggle-custom').style.display=val?'':'none';
+  if(val==='otro'){showCustomInput();return;}
+  document.getElementById('toggle-custom').style.display='none';
   isCSNU=(val==='CSNU');
   document.getElementById('cs-notice').style.display=isCSNU?'':'none';
   document.getElementById('vote-type-row').style.display=isCSNU?'none':'';
