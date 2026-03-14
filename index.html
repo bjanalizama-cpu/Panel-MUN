@@ -186,7 +186,7 @@
         <button class="preset-btn" onclick="setCountdown(30)">30 min</button>
         <button class="preset-btn" onclick="setCountdown(45)">45 min</button>
         <button class="preset-btn" onclick="setCountdown(60)">1 hora</button>
-        <button class="add-btn" onclick="startCountdown()" style="margin-left:4px;">Iniciar cuenta regresiva</button>
+        <button class="add-btn" onclick="startCountdown()" style="margin-left:4px;">Iniciar</button><button class="add-btn" id="btn-countdown-pause" onclick="pauseCountdown()" style="margin-left:4px;display:none;">Pausar</button><button class="add-btn" onclick="stopCountdown()" style="margin-left:4px;">Detener</button>
       </div>
       <div id="countdown-display" style="font-size:32px;font-weight:500;color:#1a1a18;text-align:center;margin-top:8px;display:none;"></div>
     </div>
@@ -621,19 +621,55 @@ function startCountdown(){
   disp.style.display='block';
   disp.textContent=fmtSesion(countdownSecs);
   disp.style.color='#1a1a18';
+  document.getElementById('btn-countdown-pause').style.display='';
+  document.getElementById('btn-countdown-pause').textContent='Pausar';
   countdownRunning=true;
   countdownInterval=setInterval(()=>{
     if(countdownSecs>0){
       countdownSecs--;
+      const disp=document.getElementById('countdown-display');
       disp.textContent=fmtSesion(countdownSecs);
       if(countdownSecs<=300) disp.style.color='#BA7517';
       if(countdownSecs<=60) disp.style.color='#A32D2D';
       if(countdownSecs===0){
         clearInterval(countdownInterval);countdownRunning=false;
         disp.textContent='¡Tiempo agotado!';
+        document.getElementById('btn-countdown-pause').style.display='none';
       }
     }
   },1000);
+}
+function pauseCountdown(){
+  const btn=document.getElementById('btn-countdown-pause');
+  if(countdownRunning){
+    clearInterval(countdownInterval);countdownRunning=false;
+    btn.textContent='Reanudar';
+  } else {
+    btn.textContent='Pausar';
+    countdownRunning=true;
+    countdownInterval=setInterval(()=>{
+      if(countdownSecs>0){
+        countdownSecs--;
+        const disp=document.getElementById('countdown-display');
+        disp.textContent=fmtSesion(countdownSecs);
+        if(countdownSecs<=300) disp.style.color='#BA7517';
+        if(countdownSecs<=60) disp.style.color='#A32D2D';
+        if(countdownSecs===0){
+          clearInterval(countdownInterval);countdownRunning=false;
+          disp.textContent='¡Tiempo agotado!';
+          document.getElementById('btn-countdown-pause').style.display='none';
+        }
+      }
+    },1000);
+  }
+}
+function stopCountdown(){
+  clearInterval(countdownInterval);countdownRunning=false;countdownSecs=0;
+  const disp=document.getElementById('countdown-display');
+  disp.style.display='none';
+  disp.style.color='#1a1a18';
+  document.getElementById('btn-countdown-pause').style.display='none';
+  document.getElementById('countdown-input').value='';
 }
 function renderSpeakers(){
   const el=document.getElementById('speakers-list');
@@ -722,3 +758,4 @@ renderCountries();renderSpeakers();
 </script>
 </body>
 </html>
+
