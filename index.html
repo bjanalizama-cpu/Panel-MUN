@@ -192,6 +192,11 @@
         </div>
       </div>
 
+      <!-- Panel por defecto: oculto hasta elegir tipo -->
+      <div id="panel-default" style="background:#f4f4f0;border-radius:8px;padding:14px;text-align:center;">
+        <div style="font-size:13px;color:#aaa;margin-top:20px;">Selecciona un tipo de sesión para ver las opciones correspondientes.</div>
+      </div>
+
       <!-- Panel formal: cronómetro de discursos -->
       <div id="panel-formal" style="display:none;background:#f4f4f0;border-radius:8px;padding:14px;text-align:center;">
         <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">Cronómetro de discurso</div>
@@ -218,7 +223,8 @@
 
       <!-- Panel informal: cuenta regresiva -->
       <div id="panel-informal" style="display:none;background:#f4f4f0;border-radius:8px;padding:14px;">
-        <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;text-align:center;">Cuenta regresiva</div>
+        <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;text-align:center;">Tiempo de debate libre</div>
+        <div style="font-size:12px;color:#888;text-align:center;margin-bottom:8px;">Los delegados debaten sin pasar por la mesa directiva</div>
         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:center;margin-bottom:8px;">
           <button class="preset-btn" onclick="setCountdown(10)">10 min</button>
           <button class="preset-btn" onclick="setCountdown(15)">15 min</button>
@@ -633,6 +639,7 @@ function setSesion(tipo){
   const map={'formal':'btn-formal','informal':'btn-informal','receso':'btn-receso'};
   document.getElementById(map[tipo]).className='vtype-btn active';
   // Show/hide context panels
+  document.getElementById('panel-default').style.display='none';
   document.getElementById('panel-formal').style.display=tipo==='formal'?'':'none';
   document.getElementById('panel-informal').style.display=tipo==='informal'?'':'none';
   document.getElementById('panel-receso').style.display=tipo==='receso'?'':'none';
