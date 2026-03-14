@@ -4,6 +4,99 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Panel de la Mesa Directiva</title>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCxHeystYaMl8SQ3rIZP-qCg2vZCrWtkMU",
+      authDomain: "mun-panel-d772b.firebaseapp.com",
+      projectId: "mun-panel-d772b",
+      storageBucket: "mun-panel-d772b.firebasestorage.app",
+      messagingSenderId: "428309073688",
+      appId: "1:428309073688:web:da152681412cbb1608d86d"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const SESSION_ID = "sesion-principal";
+    const sessionRef = doc(db, "sesiones", SESSION_ID);
+
+    // Save state to Firestore
+    window.saveToFirebase = async function() {
+      try {
+        const data = {
+          attendance: window.COUNTRIES_STATE ? window.COUNTRIES_STATE() : [],
+          speakers: window.getSpeakers ? window.getSpeakers() : [],
+          votes: window.getVotes ? window.getVotes() : {yes:0,no:0,abs:0},
+          motion: document.getElementById('motion-input')?.value || '',
+          committee: document.getElementById('committee-select')?.value || '',
+          committeeCustom: document.getElementById('committee-input')?.value || '',
+          sesionTipo: window.currentSesionTipo || '',
+          voteType: window.currentVoteType || 'simple',
+          updatedAt: new Date().toISOString()
+        };
+        await setDoc(sessionRef, data, { merge: true });
+      } catch(e) {
+        console.warn('Firebase save error:', e);
+      }
+    };
+
+    // Load state from Firestore on startup
+    async function loadFromFirebase() {
+      try {
+        const snap = await getDoc(sessionRef);
+        if (!snap.exists()) return;
+        const data = snap.data();
+
+        // Restore attendance
+        if (data.attendance && window.restoreAttendance) {
+          window.restoreAttendance(data.attendance);
+        }
+        // Restore speakers
+        if (data.speakers && window.restoreSpeakers) {
+          window.restoreSpeakers(data.speakers);
+        }
+        // Restore votes
+        if (data.votes && window.restoreVotes) {
+          window.restoreVotes(data.votes);
+        }
+        // Restore motion
+        if (data.motion) {
+          const mi = document.getElementById('motion-input');
+          if(mi) { mi.value = data.motion; window.updateMotion && window.updateMotion(); }
+        }
+        // Restore committee
+        if (data.committee) {
+          const sel = document.getElementById('committee-select');
+          if(sel) { sel.value = data.committee; window.onCommitteeChange && window.onCommitteeChange(); }
+        }
+        // Restore sesion tipo
+        if (data.sesionTipo && window.setSesion) {
+          window.setSesion(data.sesionTipo);
+        }
+        // Restore vote type
+        if (data.voteType && window.setVoteType) {
+          window.setVoteType(data.voteType);
+        }
+
+        // Show restore indicator
+        const indicator = document.getElementById('restore-indicator');
+        if(indicator) {
+          indicator.textContent = '✓ Sesión restaurada';
+          indicator.style.display = 'block';
+          setTimeout(() => indicator.style.display = 'none', 3000);
+        }
+      } catch(e) {
+        console.warn('Firebase load error:', e);
+      }
+    }
+
+    // Wait for DOM and app to be ready
+    window.addEventListener('load', () => {
+      setTimeout(loadFromFirebase, 500);
+    });
+  </script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: system-ui, -apple-system, sans-serif; background: #009EDB; color: #1a1a18; min-height: 100vh; padding: 1rem; }
@@ -153,6 +246,7 @@
 
 <div class="app">
   <h1>Panel de la Mesa Directiva</h1>
+  <div id="restore-indicator" style="display:none;text-align:center;font-size:12px;color:#27500A;background:#EAF3DE;padding:6px;border-radius:8px;">✓ Sesión restaurada</div>
 
   <div class="header-bar">
     <span class="committee-label">Comité:</span>
@@ -1222,6 +1316,72 @@ function resetVote(){
   updateVoteResult();
 }
 renderCountries();renderSpeakers();
+
+// Firebase bridge - expose state getters and setters
+window.COUNTRIES_STATE = function(){
+  return COUNTRIES.map(c=>({name:c.name, status:c.status}));
+};
+window.getSpeakers = function(){ return [...speakers]; };
+window.getVotes = function(){ return {...votes}; };
+window.currentSesionTipo = '';
+window.currentVoteType = 'simple';
+
+window.restoreAttendance = function(att){
+  att.forEach(a=>{
+    const c = COUNTRIES.find(x=>x.name===a.name);
+    if(c) c.status = a.status;
+  });
+  renderCountries();
+};
+window.restoreSpeakers = function(sp){
+  speakers = [...sp];
+  renderSpeakers();
+};
+window.restoreVotes = function(v){
+  votes = {...v};
+  ['yes','no','abs'].forEach(t=>document.getElementById('v-'+t).textContent=votes[t]||0);
+  const total=(votes.yes||0)+(votes.no||0)+(votes.abs||0);
+  if(total>0){
+    document.getElementById('bar-yes').style.width=(votes.yes/total*100)+'%';
+    document.getElementById('bar-no').style.width=(votes.no/total*100)+'%';
+    document.getElementById('bar-abs').style.width=(votes.abs/total*100)+'%';
+  }
+  updateEmitidos();updateQuorum();updateVoteResult();
+};
+
+// Auto-save on key actions — debounced 1s
+let saveTimer=null;
+function scheduleSave(){
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(()=>{ if(window.saveToFirebase) window.saveToFirebase(); },1000);
+}
+
+// Patch key functions to trigger save
+const _setStatus=setStatus;
+setStatus=function(i,s){ _setStatus(i,s); scheduleSave(); };
+
+const _addSpeaker=addSpeaker;
+addSpeaker=function(){ _addSpeaker(); scheduleSave(); };
+
+const _removeSpeaker=removeSpeaker;
+removeSpeaker=function(i){ _removeSpeaker(i); scheduleSave(); };
+
+const _vote=vote;
+vote=function(t){ _vote(t); scheduleSave(); };
+
+const _unvote=unvote;
+unvote=function(t){ _unvote(t); scheduleSave(); };
+
+const _resetVote=resetVote;
+resetVote=function(){ _resetVote(); scheduleSave(); };
+
+const _setSesion=setSesion;
+setSesion=function(t){ window.currentSesionTipo=t; _setSesion(t); scheduleSave(); };
+
+const _setVoteType=setVoteType;
+setVoteType=function(t){ window.currentVoteType=t; _setVoteType(t); scheduleSave(); };
+
+document.getElementById('motion-input')?.addEventListener('input', scheduleSave);
 </script>
 </body>
 </html>
