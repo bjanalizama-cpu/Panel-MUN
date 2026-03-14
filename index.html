@@ -646,7 +646,7 @@ function setSesion(tipo){
   document.getElementById('panel-informal').style.display=tipo==='informal'?'':'none';
   document.getElementById('panel-receso').style.display=tipo==='receso'?'':'none';
   // Cronómetro de oradores visible solo en sesión formal
-  document.getElementById('panel-cronometro-oradores').style.display=(tipo==='informal'||tipo==='receso')?'none':'';
+  // Cronómetro de oradores siempre visible
   // Pause sesion timer on receso, resume on formal/informal
   if(tipo==='receso'&&sesionRunning){
     clearInterval(sesionInterval);sesionRunning=false;
