@@ -121,7 +121,7 @@
       <option value="CSNU">Consejo de Seguridad (CSNU)</option>
       <option value="otro">Otro...</option>
     </select>
-    <input class="committee-input" id="committee-input" type="text" placeholder="Nombre del comité" />
+    <input class="committee-input" id="committee-input" type="text" placeholder="Nombre del comité" oninput="this.value=this.value" />
     <button class="other-btn" id="toggle-custom" onclick="toggleCustom()" style="display:none;">Elegir de lista</button>
   </div>
 
@@ -254,9 +254,12 @@ let searchFilter='';
 
 function toggleCustom(){
   customMode=!customMode;
+  const inp=document.getElementById('committee-input');
   document.getElementById('committee-select').style.display=customMode?'none':'';
-  document.getElementById('committee-input').style.display=customMode?'':'none';
+  inp.style.display=customMode?'':'none';
+  inp.removeAttribute('disabled');
   document.getElementById('toggle-custom').textContent=customMode?'Elegir de lista':'Otro...';
+  if(customMode){inp.value='';setTimeout(()=>{inp.focus();},80);}
 }
 function onCommitteeChange(){
   const val=document.getElementById('committee-select').value;
