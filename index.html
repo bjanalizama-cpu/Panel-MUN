@@ -143,13 +143,12 @@
     <span class="committee-label">Comité:</span>
     <select class="committee-select" id="committee-select" onchange="onCommitteeChange()">
       <option value="">— Seleccionar comité —</option>
-      <option value="AG">Asamblea General (AG)</option>
-      <option value="ECOSOC">ECOSOC</option>
-      <option value="CDH">Consejo de Derechos Humanos (CDH)</option>
-      <option value="UNCTAD">UNCTAD</option>
-      <option value="PNUMA">PNUMA</option>
-      <option value="OPS">OPS / OMS</option>
-      <option value="CSNU">Consejo de Seguridad (CSNU)</option>
+      <option value="AG">Asamblea General — 193 miembros</option>
+      <option value="CSNU">Consejo de Seguridad — 15 miembros</option>
+      <option value="ECOSOC">ECOSOC — 54 miembros</option>
+      <option value="CDH">Consejo de Derechos Humanos — 47 miembros</option>
+      <option value="OIM">OIM — 175 miembros</option>
+      <option value="ONUMUJERES">ONU Mujeres — 193 miembros</option>
       <option value="otro">Otro...</option>
     </select>
     <input class="committee-input" id="committee-input" type="text" placeholder="Nombre del comité" style="display:none;" />
@@ -336,12 +335,43 @@ let p5Vetoed=new Set();
 let searchFilter='';
 let projecting=false;
 
+// Listas oficiales por comité
+const COMMITTEE_MEMBERS = {
+  'AG': null, // todos los 191
+  'ONUMUJERES': null, // todos los 191
+  'CSNU': ["Alemania","China","Ecuador","Estados Unidos","Francia","Grecia","Guyana","Panamá","Reino Unido","República de Corea","Rusia","Sierra Leona","Eslovenia","Somalia","Suiza"],
+  'ECOSOC': ["Albania","Alemania","Angola","Arabia Saudita","Argelia","Argentina","Armenia","Australia","Austria","Azerbaiyán","Bangladesh","Bélgica","Bolivia","Brasil","Burkina Faso","Camerún","Canadá","Chad","Chile","China","Colombia","Congo","Costa Rica","Cuba","Dinamarca","Ecuador","Egipto","El Salvador","España","Estados Unidos","Etiopía","Filipinas","Francia","Ghana","Guatemala","Guinea","India","Indonesia","Irán","Italia","Japón","Kazajistán","Kenia","Madagascar","Malasia","Marruecos","México","Moldova","Mozambique","Namibia","Nicaragua","Nigeria","Noruega","Países Bajos","Pakistán","Paraguay","Perú","Polonia","Portugal","Reino Unido","República Democrática del Congo","Rumania","Rusia","Rwanda","Senegal","Sierra Leona","Sri Lanka","Sudáfrica","Suecia","Suiza","Tailandia","Tanzania","Togo","Türkiye","Ucrania","Uganda","Uruguay","Venezuela","Vietnam","Zambia","Zimbabwe"],
+  'CDH': ["Alemania","Angola","Argentina","Bangladesh","Bélgica","Benín","Bolivia","Brasil","Bulgaria","Burkina Faso","Camerún","China","Costa de Marfil","Costa Rica","Cuba","Dinamarca","Ecuador","Eritrea","Etiopía","Filipinas","Finlandia","Francia","Gabón","Georgia","Ghana","Guatemala","Honduras","India","Indonesia","Japón","Kazajistán","Kenia","Kirguistán","Luxemburgo","Malawi","Maldivas","Marruecos","Mauritania","México","Montenegro","Nepal","Nigeria","Países Bajos","Paraguay","Qatar","Reino Unido","República Checa","República Dominicana","Rumania","Senegal","Somalia","Sudán","Sudáfrica","Ucrania","Vietnam"],
+  'OIM': ["Afganistán","Albania","Alemania","Andorra","Angola","Antigua y Barbuda","Arabia Saudita","Argelia","Argentina","Armenia","Australia","Austria","Azerbaiyán","Bahamas","Bahrein","Bangladesh","Bélgica","Belice","Benín","Bolivia","Bosnia y Herzegovina","Botsuana","Brasil","Bulgaria","Burkina Faso","Burundi","Cabo Verde","Camboya","Camerún","Canadá","Catar","Chad","Chile","Chipre","Colombia","Comoras","Congo","Corea del Sur","Costa de Marfil","Costa Rica","Croacia","Cuba","Dinamarca","Ecuador","Egipto","El Salvador","Emiratos Árabes Unidos","Eslovaquia","Eslovenia","España","Estados Unidos","Estonia","Etiopía","Filipinas","Finlandia","Francia","Gabón","Gambia","Georgia","Ghana","Granada","Grecia","Guatemala","Guinea","Guinea Ecuatorial","Guyana","Haití","Honduras","Hungría","India","Indonesia","Irak","Irán","Irlanda","Islandia","Israel","Italia","Jamaica","Japón","Jordania","Kazajistán","Kenia","Kirguistán","Kuwait","Laos","Lesoto","Letonia","Líbano","Liberia","Libia","Lituania","Luxemburgo","Madagascar","Malasia","Malaui","Maldivas","Malí","Malta","Marruecos","Mauricio","Mauritania","México","Moldavia","Mongolia","Montenegro","Mozambique","Namibia","Nepal","Nicaragua","Níger","Nigeria","Noruega","Nueva Zelanda","Omán","Países Bajos","Pakistán","Panamá","Papúa Nueva Guinea","Paraguay","Perú","Polonia","Portugal","Reino Unido","República Centroafricana","República Checa","República Democrática del Congo","República Dominicana","Ruanda","Rumania","Rusia","Samoa","Senegal","Serbia","Sierra Leona","Singapur","Somalia","Sri Lanka","Sudáfrica","Sudán","Sudán del Sur","Suecia","Suiza","Surinam","Tailandia","Tanzania","Tayikistán","Timor Oriental","Togo","Trinidad y Tobago","Túnez","Turquía","Ucrania","Uganda","Uruguay","Uzbekistán","Vanuatu","Venezuela","Vietnam","Yemen","Yibuti","Zambia","Zimbabue"]
+};
+
+const COMMITTEE_NAMES = {
+  'AG':'Asamblea General','CSNU':'Consejo de Seguridad',
+  'ECOSOC':'ECOSOC','CDH':'Consejo de Derechos Humanos',
+  'OIM':'OIM','ONUMUJERES':'ONU Mujeres'
+};
+
 function getCommitteeName(){
   if(customMode) return document.getElementById('committee-input').value||'';
   const val=document.getElementById('committee-select').value;
-  const map={'AG':'Asamblea General','ECOSOC':'ECOSOC','CDH':'Consejo de Derechos Humanos',
-    'UNCTAD':'UNCTAD','PNUMA':'PNUMA','OPS':'OPS / OMS','CSNU':'Consejo de Seguridad'};
-  return map[val]||'';
+  return COMMITTEE_NAMES[val]||'';
+}
+
+function loadCommitteeMembers(val){
+  const members = COMMITTEE_MEMBERS[val];
+  COUNTRIES.forEach(c => c.status = 'A');
+  if(members === null){
+    // todos los países
+  } else if(members) {
+    COUNTRIES.forEach(c => {
+      if(!members.includes(c.name)) c.status = 'A';
+    });
+    // marcar no miembros visualmente — los dejamos en A pero filtramos en render
+  }
+  // resetear búsqueda
+  document.getElementById('search-input').value='';
+  searchFilter='';
+  renderCountries();
 }
 
 function showCustomInput(){
@@ -370,6 +400,7 @@ function onCommitteeChange(){
   document.getElementById('cs-notice').style.display=isCSNU?'':'none';
   document.getElementById('vote-type-row').style.display=isCSNU?'none':'';
   if(isCSNU)renderP5Grid();
+  if(val) loadCommitteeMembers(val);
   updateQuorum();updateVoteResult();
 }
 function renderP5Grid(){
@@ -387,7 +418,7 @@ function toggleCountries(){
   document.getElementById('country-list-wrap').classList.toggle('collapsed',countriesCollapsed);
   document.getElementById('collapse-btn').textContent=countriesCollapsed?'Expandir ▼':'Contraer ▲';
 }
-function getVoters(){return COUNTRIES.filter(c=>c.status==='PV').length;}
+function getVoters(){return getActiveMembers().filter(c=>c.status==='PV').length;}
 function updateQuorum(){
   const total=isCSNU?15:getVoters();
   if(total===0){['q-total','q-quorum','q-needed'].forEach(id=>document.getElementById(id).textContent='—');return;}
@@ -412,14 +443,23 @@ function filterCountries(){
   searchFilter=document.getElementById('search-input').value.toLowerCase();
   renderCountries();
 }
+function getActiveMembers(){
+  const val=document.getElementById('committee-select').value;
+  if(!val||val==='otro') return COUNTRIES;
+  const members=COMMITTEE_MEMBERS[val];
+  if(members===null) return COUNTRIES;
+  if(members) return COUNTRIES.filter(c=>members.includes(c.name));
+  return COUNTRIES;
+}
 function renderCountries(){
   const el=document.getElementById('country-list');el.innerHTML='';
+  const active=getActiveMembers();
   let p=0,pv=0,a=0;
-  COUNTRIES.forEach(c=>{if(c.status==='P')p++;else if(c.status==='PV')pv++;else a++;});
+  active.forEach(c=>{if(c.status==='P')p++;else if(c.status==='PV')pv++;else a++;});
   document.getElementById('cnt-p').textContent=p;
   document.getElementById('cnt-pv').textContent=pv;
   document.getElementById('cnt-a').textContent=a;
-  COUNTRIES.filter(c=>c.name.toLowerCase().includes(searchFilter)).forEach(c=>{
+  active.filter(c=>c.name.toLowerCase().includes(searchFilter)).forEach(c=>{
     const i=COUNTRIES.indexOf(c);
     const row=document.createElement('div');row.className='country-row';
     row.innerHTML=`<span class="country-name">${flagImg(c.name,'h40')} ${c.name}</span><div class="status-btns">
@@ -431,7 +471,7 @@ function renderCountries(){
   });
   const sel=document.getElementById('speaker-select');const cur=sel.value;
   sel.innerHTML='<option value="">— Agregar país —</option>';
-  COUNTRIES.filter(c=>c.status!=='A').forEach(c=>{
+  getActiveMembers().filter(c=>c.status!=='A').forEach(c=>{
     const o=document.createElement('option');
     o.value=c.name;
     o.textContent=c.name;
