@@ -277,7 +277,7 @@
       </div>
     </div>
 
-    <div class="panel">
+    <div class="panel" id="panel-cronometro-oradores">
       <div class="panel-title">Cronómetro de oradores</div>
       <div class="timer-presets">
         <button class="preset-btn" onclick="setTimer(30)">30 seg</button>
@@ -643,6 +643,8 @@ function setSesion(tipo){
   document.getElementById('panel-formal').style.display=tipo==='formal'?'':'none';
   document.getElementById('panel-informal').style.display=tipo==='informal'?'':'none';
   document.getElementById('panel-receso').style.display=tipo==='receso'?'':'none';
+  // Ocultar cronómetro de oradores en sesión informal y receso
+  document.getElementById('panel-cronometro-oradores').style.display=(tipo==='informal'||tipo==='receso')?'none':'';
   // Pause sesion timer on receso, resume on formal/informal
   if(tipo==='receso'&&sesionRunning){
     clearInterval(sesionInterval);sesionRunning=false;
