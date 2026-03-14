@@ -107,7 +107,8 @@
     .projection-overlay { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #009EDB; z-index: 1000; flex-direction: column; align-items: center; justify-content: center; gap: 32px; }
     .projection-overlay.active { display: flex; }
     .proj-un-logo { width: 110px; height: 110px; opacity: 0.95; }
-    .proj-flag { font-size: 100px; line-height: 1; filter: drop-shadow(0 4px 16px rgba(0,0,0,0.18)); }
+    .proj-flag { line-height: 1; filter: drop-shadow(0 4px 16px rgba(0,0,0,0.25)); }
+    .proj-flag img { height: 120px; border-radius: 4px; }
     .proj-country { font-size: 52px; font-weight: 600; color: #fff; text-align: center; letter-spacing: 0.01em; text-shadow: 0 2px 8px rgba(0,0,0,0.15); }
     .proj-speaking { font-size: 18px; color: rgba(255,255,255,0.75); letter-spacing: 0.12em; text-transform: uppercase; margin-top: -16px; }
     .proj-timer { font-size: 80px; font-weight: 300; color: #fff; letter-spacing: 0.05em; text-shadow: 0 2px 12px rgba(0,0,0,0.15); }
@@ -127,7 +128,7 @@
 <!-- Pantalla de proyección -->
 <div class="projection-overlay" id="projection-overlay">
   <button class="proj-close" onclick="closeProjection()">Cerrar proyección ✕</button>
-  <img class="proj-un-logo" id="proj-un-logo" src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/ee/UN_emblem_blue.svg/600px-UN_emblem_blue.svg.png" alt="ONU" />
+  <img class="proj-un-logo" src="https://flagcdn.com/h120/un.png" alt="ONU" onerror="this.style.display='none'" />
   <div class="proj-flag" id="proj-flag"></div>
   <div class="proj-country" id="proj-country">—</div>
   <div class="proj-speaking">en uso de la palabra</div>
@@ -278,48 +279,53 @@ const COUNTRIES = [
 ].map(name => ({name, status:"A"}));
 
 const FLAGS = {
-  "Afganistán":"🇦🇫","Albania":"🇦🇱","Alemania":"🇩🇪","Andorra":"🇦🇩","Angola":"🇦🇴",
-  "Antigua y Barbuda":"🇦🇬","Arabia Saudita":"🇸🇦","Argelia":"🇩🇿","Argentina":"🇦🇷",
-  "Armenia":"🇦🇲","Australia":"🇦🇺","Austria":"🇦🇹","Azerbaiyán":"🇦🇿","Bahamas":"🇧🇸",
-  "Bahrein":"🇧🇭","Bangladesh":"🇧🇩","Barbados":"🇧🇧","Bélgica":"🇧🇪","Belice":"🇧🇿",
-  "Benín":"🇧🇯","Bielorrusia":"🇧🇾","Bolivia":"🇧🇴","Bosnia y Herzegovina":"🇧🇦",
-  "Botsuana":"🇧🇼","Brasil":"🇧🇷","Brunéi":"🇧🇳","Bulgaria":"🇧🇬","Burkina Faso":"🇧🇫",
-  "Burundi":"🇧🇮","Bután":"🇧🇹","Cabo Verde":"🇨🇻","Camboya":"🇰🇭","Camerún":"🇨🇲",
-  "Canadá":"🇨🇦","Catar":"🇶🇦","Chad":"🇹🇩","Chile":"🇨🇱","China":"🇨🇳","Chipre":"🇨🇾",
-  "Colombia":"🇨🇴","Comoras":"🇰🇲","Congo":"🇨🇬","Corea del Norte":"🇰🇵","Corea del Sur":"🇰🇷",
-  "Costa de Marfil":"🇨🇮","Costa Rica":"🇨🇷","Croacia":"🇭🇷","Cuba":"🇨🇺","Dinamarca":"🇩🇰",
-  "Dominica":"🇩🇲","Ecuador":"🇪🇨","Egipto":"🇪🇬","El Salvador":"🇸🇻",
-  "Emiratos Árabes Unidos":"🇦🇪","Eritrea":"🇪🇷","Eslovaquia":"🇸🇰","Eslovenia":"🇸🇮",
-  "España":"🇪🇸","Estados Unidos":"🇺🇸","Estonia":"🇪🇪","Etiopía":"🇪🇹","Filipinas":"🇵🇭",
-  "Finlandia":"🇫🇮","Fiyi":"🇫🇯","Francia":"🇫🇷","Gabón":"🇬🇦","Gambia":"🇬🇲",
-  "Georgia":"🇬🇪","Ghana":"🇬🇭","Granada":"🇬🇩","Grecia":"🇬🇷","Guatemala":"🇬🇹",
-  "Guinea":"🇬🇳","Guinea-Bisáu":"🇬🇼","Guinea Ecuatorial":"🇬🇶","Guyana":"🇬🇾",
-  "Haití":"🇭🇹","Honduras":"🇭🇳","Hungría":"🇭🇺","India":"🇮🇳","Indonesia":"🇮🇩",
-  "Irak":"🇮🇶","Irán":"🇮🇷","Irlanda":"🇮🇪","Islandia":"🇮🇸","Islas Marshall":"🇲🇭",
-  "Islas Salomón":"🇸🇧","Israel":"🇮🇱","Italia":"🇮🇹","Jamaica":"🇯🇲","Japón":"🇯🇵",
-  "Jordania":"🇯🇴","Kazajistán":"🇰🇿","Kenia":"🇰🇪","Kirguistán":"🇰🇬","Kiribati":"🇰🇮",
-  "Kuwait":"🇰🇼","Laos":"🇱🇦","Lesoto":"🇱🇸","Letonia":"🇱🇻","Líbano":"🇱🇧",
-  "Liberia":"🇱🇷","Libia":"🇱🇾","Liechtenstein":"🇱🇮","Lituania":"🇱🇹","Luxemburgo":"🇱🇺",
-  "Madagascar":"🇲🇬","Malasia":"🇲🇾","Malaui":"🇲🇼","Maldivas":"🇲🇻","Malí":"🇲🇱",
-  "Malta":"🇲🇹","Marruecos":"🇲🇦","Mauricio":"🇲🇺","Mauritania":"🇲🇷","México":"🇲🇽",
-  "Micronesia":"🇫🇲","Moldavia":"🇲🇩","Mónaco":"🇲🇨","Mongolia":"🇲🇳","Montenegro":"🇲🇪",
-  "Mozambique":"🇲🇿","Namibia":"🇳🇦","Nauru":"🇳🇷","Nepal":"🇳🇵","Nicaragua":"🇳🇮",
-  "Níger":"🇳🇪","Nigeria":"🇳🇬","Noruega":"🇳🇴","Nueva Zelanda":"🇳🇿","Omán":"🇴🇲",
-  "Países Bajos":"🇳🇱","Pakistán":"🇵🇰","Palaos":"🇵🇼","Panamá":"🇵🇦",
-  "Papúa Nueva Guinea":"🇵🇬","Paraguay":"🇵🇾","Perú":"🇵🇪","Polonia":"🇵🇱","Portugal":"🇵🇹",
-  "Reino Unido":"🇬🇧","República Centroafricana":"🇨🇫","República Checa":"🇨🇿",
-  "República Democrática del Congo":"🇨🇩","República Dominicana":"🇩🇴","Ruanda":"🇷🇼",
-  "Rumania":"🇷🇴","Rusia":"🇷🇺","Samoa":"🇼🇸","San Cristóbal y Nieves":"🇰🇳",
-  "San Marino":"🇸🇲","San Vicente y las Granadinas":"🇻🇨","Santa Lucía":"🇱🇨",
-  "Santo Tomé y Príncipe":"🇸🇹","Senegal":"🇸🇳","Serbia":"🇷🇸","Seychelles":"🇸🇨",
-  "Sierra Leona":"🇸🇱","Singapur":"🇸🇬","Siria":"🇸🇾","Somalia":"🇸🇴","Sri Lanka":"🇱🇰",
-  "Suazilandia":"🇸🇿","Sudáfrica":"🇿🇦","Sudán":"🇸🇩","Sudán del Sur":"🇸🇸","Suecia":"🇸🇪",
-  "Suiza":"🇨🇭","Surinam":"🇸🇷","Tailandia":"🇹🇭","Tanzania":"🇹🇿","Tayikistán":"🇹🇯",
-  "Timor Oriental":"🇹🇱","Togo":"🇹🇬","Tonga":"🇹🇴","Trinidad y Tobago":"🇹🇹","Túnez":"🇹🇳",
-  "Turkmenistán":"🇹🇲","Turquía":"🇹🇷","Tuvalu":"🇹🇻","Ucrania":"🇺🇦","Uganda":"🇺🇬",
-  "Uruguay":"🇺🇾","Uzbekistán":"🇺🇿","Vanuatu":"🇻🇺","Venezuela":"🇻🇪","Vietnam":"🇻🇳",
-  "Yemen":"🇾🇪","Yibuti":"🇩🇯","Zambia":"🇿🇲","Zimbabue":"🇿🇼"
+  "Afganistán":"af","Albania":"al","Alemania":"de","Andorra":"ad","Angola":"ao",
+  "Antigua y Barbuda":"ag","Arabia Saudita":"sa","Argelia":"dz","Argentina":"ar",
+  "Armenia":"am","Australia":"au","Austria":"at","Azerbaiyán":"az","Bahamas":"bs",
+  "Bahrein":"bh","Bangladesh":"bd","Barbados":"bb","Bélgica":"be","Belice":"bz",
+  "Benín":"bj","Bielorrusia":"by","Bolivia":"bo","Bosnia y Herzegovina":"ba",
+  "Botsuana":"bw","Brasil":"br","Brunéi":"bn","Bulgaria":"bg","Burkina Faso":"bf",
+  "Burundi":"bi","Bután":"bt","Cabo Verde":"cv","Camboya":"kh","Camerún":"cm",
+  "Canadá":"ca","Catar":"qa","Chad":"td","Chile":"cl","China":"cn","Chipre":"cy",
+  "Colombia":"co","Comoras":"km","Congo":"cg","Corea del Norte":"kp","Corea del Sur":"kr",
+  "Costa de Marfil":"ci","Costa Rica":"cr","Croacia":"hr","Cuba":"cu","Dinamarca":"dk",
+  "Dominica":"dm","Ecuador":"ec","Egipto":"eg","El Salvador":"sv",
+  "Emiratos Árabes Unidos":"ae","Eritrea":"er","Eslovaquia":"sk","Eslovenia":"si",
+  "España":"es","Estados Unidos":"us","Estonia":"ee","Etiopía":"et","Filipinas":"ph",
+  "Finlandia":"fi","Fiyi":"fj","Francia":"fr","Gabón":"ga","Gambia":"gm",
+  "Georgia":"ge","Ghana":"gh","Granada":"gd","Grecia":"gr","Guatemala":"gt",
+  "Guinea":"gn","Guinea-Bisáu":"gw","Guinea Ecuatorial":"gq","Guyana":"gy",
+  "Haití":"ht","Honduras":"hn","Hungría":"hu","India":"in","Indonesia":"id",
+  "Irak":"iq","Irán":"ir","Irlanda":"ie","Islandia":"is","Islas Marshall":"mh",
+  "Islas Salomón":"sb","Israel":"il","Italia":"it","Jamaica":"jm","Japón":"jp",
+  "Jordania":"jo","Kazajistán":"kz","Kenia":"ke","Kirguistán":"kg","Kiribati":"ki",
+  "Kuwait":"kw","Laos":"la","Lesoto":"ls","Letonia":"lv","Líbano":"lb",
+  "Liberia":"lr","Libia":"ly","Liechtenstein":"li","Lituania":"lt","Luxemburgo":"lu",
+  "Madagascar":"mg","Malasia":"my","Malaui":"mw","Maldivas":"mv","Malí":"ml",
+  "Malta":"mt","Marruecos":"ma","Mauricio":"mu","Mauritania":"mr","México":"mx",
+  "Micronesia":"fm","Moldavia":"md","Mónaco":"mc","Mongolia":"mn","Montenegro":"me",
+  "Mozambique":"mz","Namibia":"na","Nauru":"nr","Nepal":"np","Nicaragua":"ni",
+  "Níger":"ne","Nigeria":"ng","Noruega":"no","Nueva Zelanda":"nz","Omán":"om",
+  "Países Bajos":"nl","Pakistán":"pk","Palaos":"pw","Panamá":"pa",
+  "Papúa Nueva Guinea":"pg","Paraguay":"py","Perú":"pe","Polonia":"pl","Portugal":"pt",
+  "Reino Unido":"gb","República Centroafricana":"cf","República Checa":"cz",
+  "República Democrática del Congo":"cd","República Dominicana":"do","Ruanda":"rw",
+  "Rumania":"ro","Rusia":"ru","Samoa":"ws","San Cristóbal y Nieves":"kn",
+  "San Marino":"sm","San Vicente y las Granadinas":"vc","Santa Lucía":"lc",
+  "Santo Tomé y Príncipe":"st","Senegal":"sn","Serbia":"rs","Seychelles":"sc",
+  "Sierra Leona":"sl","Singapur":"sg","Siria":"sy","Somalia":"so","Sri Lanka":"lk",
+  "Suazilandia":"sz","Sudáfrica":"za","Sudán":"sd","Sudán del Sur":"ss","Suecia":"se",
+  "Suiza":"ch","Surinam":"sr","Tailandia":"th","Tanzania":"tz","Tayikistán":"tj",
+  "Timor Oriental":"tl","Togo":"tg","Tonga":"to","Trinidad y Tobago":"tt","Túnez":"tn",
+  "Turkmenistán":"tm","Turquía":"tr","Tuvalu":"tv","Ucrania":"ua","Uganda":"ug",
+  "Uruguay":"uy","Uzbekistán":"uz","Vanuatu":"vu","Venezuela":"ve","Vietnam":"vn",
+  "Yemen":"ye","Yibuti":"dj","Zambia":"zm","Zimbabue":"zw"
 };
+function flagImg(name, size){
+  const code=FLAGS[name];
+  if(!code) return '';
+  return `<img src="https://flagcdn.com/${size}/${code}.png" style="height:${size==='h40'?'20px':'80px'};border-radius:2px;vertical-align:middle;" />`;
+}
 
 const P5 = ["China","Francia","Reino Unido","Rusia","Estados Unidos"];
 let timerSecs=90,timerMax=90,running=false,interval=null;
@@ -416,7 +422,7 @@ function renderCountries(){
   COUNTRIES.filter(c=>c.name.toLowerCase().includes(searchFilter)).forEach(c=>{
     const i=COUNTRIES.indexOf(c);
     const row=document.createElement('div');row.className='country-row';
-    row.innerHTML=`<span class="country-name">${FLAGS[c.name]||''} ${c.name}</span><div class="status-btns">
+    row.innerHTML=`<span class="country-name">${flagImg(c.name,'h40')} ${c.name}</span><div class="status-btns">
       <button class="status-btn ${c.status==='P'?'active-p':''}" onclick="setStatus(${i},'P')">P</button>
       <button class="status-btn ${c.status==='PV'?'active-pv':''}" onclick="setStatus(${i},'PV')">P+V</button>
       <button class="status-btn ${c.status==='A'?'active-a':''}" onclick="setStatus(${i},'A')">A</button>
@@ -428,7 +434,7 @@ function renderCountries(){
   COUNTRIES.filter(c=>c.status!=='A').forEach(c=>{
     const o=document.createElement('option');
     o.value=c.name;
-    o.textContent=(FLAGS[c.name]||'')+' '+c.name;
+    o.textContent=c.name;
     if(c.name===cur)o.selected=true;
     sel.appendChild(o);
   });
@@ -481,7 +487,7 @@ function renderSpeakers(){
   speakers.forEach((s,i)=>{
     const row=document.createElement('div');
     row.className='speaker-row'+(i===0?' speaker-active':'');
-    row.innerHTML=`<span class="speaker-num">${i+1}</span><span class="speaker-flag">${FLAGS[s]||'🌐'}</span><span class="speaker-name">${s}</span><span class="speaker-del" onclick="removeSpeaker(${i})">✕</span>`;
+    row.innerHTML=`<span class="speaker-num">${i+1}</span><span class="speaker-flag">${flagImg(s,'h40')}</span><span class="speaker-name">${s}</span><span class="speaker-del" onclick="removeSpeaker(${i})">✕</span>`;
     el.appendChild(row);
   });
   if(projecting) updateProjection();
@@ -496,7 +502,7 @@ function nextSpeaker(){if(speakers.length>0){speakers.shift();renderSpeakers();r
 function updateProjection(){
   const country=speakers.length>0?speakers[0]:'—';
   document.getElementById('proj-country').textContent=country;
-  document.getElementById('proj-flag').textContent=speakers.length>0?(FLAGS[country]||'🌐'):'';
+  document.getElementById('proj-flag').innerHTML=speakers.length>0?flagImg(country,'h120'):'';
   document.getElementById('proj-committee').textContent=getCommitteeName();
   document.getElementById('proj-timer').textContent=fmt(timerSecs);
 }
