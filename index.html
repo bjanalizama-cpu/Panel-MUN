@@ -21,6 +21,70 @@
     const db = getFirestore(app);
     const SESSION_ID = "sesion-principal";
     const sessionRef = doc(db, "sesiones", SESSION_ID);
+    const votingRef = doc(db, "votaciones", SESSION_ID);
+
+    // Detect if delegate mode (?delegado in URL)
+    const isDelegado = window.location.search.includes('delegado');
+    window.isDelegado = isDelegado;
+
+    if(isDelegado) {
+      // Hide main app, show delegate screen
+      window.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('app-main').style.display='none';
+        document.getElementById('app-delegado').style.display='block';
+      });
+
+      // Listen for voting state changes
+      onSnapshot(votingRef, (snap) => {
+        if(!snap.exists()) return;
+        const data = snap.data();
+        window.updateDelegadoUI && window.updateDelegadoUI(data);
+      });
+
+      // Delegate votes
+      window.emitirVoto = async function(tipo, pais) {
+        try {
+          const votoRef = doc(db, "votos_delegados", SESSION_ID + "_" + pais);
+          await setDoc(votoRef, {
+            pais, tipo,
+            sesion: SESSION_ID,
+            timestamp: new Date().toISOString()
+          });
+          window.votoDelegadoEmitido && window.votoDelegadoEmitido(tipo);
+        } catch(e) { console.warn('Vote error:', e); }
+      };
+
+    } else {
+      // Chair mode - listen for delegate votes in real time
+      window.listenDelegateVotes = function(paises) {
+        paises.forEach(pais => {
+          const votoRef = doc(db, "votos_delegados", SESSION_ID + "_" + pais);
+          onSnapshot(votoRef, (snap) => {
+            if(!snap.exists()) return;
+            const data = snap.data();
+            window.onDelegateVoteReceived && window.onDelegateVoteReceived(data);
+          });
+        });
+      };
+
+      // Open/close remote voting
+      window.openRemoteVoting = async function(motion, paises) {
+        await setDoc(votingRef, {
+          open: true,
+          motion,
+          paises,
+          timestamp: new Date().toISOString()
+        });
+        // Clear previous votes
+        for(const pais of paises) {
+          const votoRef = doc(db, "votos_delegados", SESSION_ID + "_" + pais);
+          await setDoc(votoRef, { pais, tipo: null, sesion: SESSION_ID, timestamp: null });
+        }
+      };
+      window.closeRemoteVoting = async function() {
+        await setDoc(votingRef, { open: false }, { merge: true });
+      };
+    }
 
     // Save state to Firestore
     window.saveToFirebase = async function() {
@@ -218,6 +282,51 @@
 </head>
 <body>
 
+<!-- Vista Delegado -->
+<div id="delegate-view" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:#009EDB;z-index:2000;flex-direction:column;align-items:center;justify-content:center;padding:2rem;">
+  
+  <!-- Pantalla de entrada -->
+  <div id="dv-join" style="background:#fff;border-radius:16px;padding:2rem;width:100%;max-width:340px;text-align:center;">
+    <img src="https://flagcdn.com/h120/un.png" style="height:60px;margin-bottom:1rem;" onerror="this.style.display='none'" />
+    <div style="font-size:20px;font-weight:500;color:#1a1a18;margin-bottom:6px;">Panel de la Mesa Directiva</div>
+    <div style="font-size:13px;color:#888;margin-bottom:1.5rem;">Ingresa el código de sala y selecciona tu país</div>
+    <input id="dv-room-code" type="text" placeholder="Código de sala (ej: CSNU-2026)" style="width:100%;font-size:15px;padding:10px 12px;border-radius:8px;border:0.5px solid #ccc;margin-bottom:10px;text-align:center;text-transform:uppercase;" oninput="this.value=this.value.toUpperCase()" />
+    <select id="dv-country-select" style="width:100%;font-size:14px;padding:10px 12px;border-radius:8px;border:0.5px solid #ccc;margin-bottom:16px;">
+      <option value="">— Selecciona tu país —</option>
+    </select>
+    <button onclick="delegateJoin()" style="width:100%;padding:12px;background:#009EDB;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:500;cursor:pointer;">Unirse a la sesión</button>
+    <div id="dv-join-error" style="color:#A32D2D;font-size:12px;margin-top:8px;display:none;"></div>
+  </div>
+
+  <!-- Pantalla de espera -->
+  <div id="dv-waiting" style="display:none;background:#fff;border-radius:16px;padding:2rem;width:100%;max-width:340px;text-align:center;">
+    <div id="dv-flag-wait" style="font-size:14px;margin-bottom:8px;"></div>
+    <div id="dv-country-name" style="font-size:22px;font-weight:500;color:#1a1a18;margin-bottom:8px;"></div>
+    <div style="font-size:13px;color:#888;margin-bottom:1.5rem;">Esperando que la mesa abra la votación...</div>
+    <div style="width:40px;height:4px;background:#009EDB;border-radius:2px;margin:0 auto;animation:pulse 1.5s infinite;"></div>
+    <style>@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.3;}}</style>
+  </div>
+
+  <!-- Pantalla de votación -->
+  <div id="dv-voting" style="display:none;background:#fff;border-radius:16px;padding:2rem;width:100%;max-width:340px;text-align:center;">
+    <div id="dv-flag-vote" style="margin-bottom:8px;"></div>
+    <div id="dv-country-vote" style="font-size:18px;font-weight:500;color:#1a1a18;margin-bottom:4px;"></div>
+    <div style="font-size:12px;color:#888;margin-bottom:4px;">Votando:</div>
+    <div id="dv-motion-text" style="font-size:14px;font-weight:500;color:#1a1a18;margin-bottom:1.5rem;min-height:20px;"></div>
+    <button id="dv-btn-yes" onclick="delegateVote('yes')" style="width:100%;padding:14px;background:#EAF3DE;color:#27500A;border:2px solid #97C459;border-radius:10px;font-size:16px;font-weight:500;cursor:pointer;margin-bottom:8px;">A favor</button>
+    <button id="dv-btn-no" onclick="delegateVote('no')" style="width:100%;padding:14px;background:#FCEBEB;color:#791F1F;border:2px solid #F09595;border-radius:10px;font-size:16px;font-weight:500;cursor:pointer;margin-bottom:8px;">En contra</button>
+    <button id="dv-btn-abs" onclick="delegateVote('abs')" style="width:100%;padding:14px;background:#FAEEDA;color:#633806;border:2px solid #EF9F27;border-radius:10px;font-size:16px;font-weight:500;cursor:pointer;">Abstención</button>
+  </div>
+
+  <!-- Pantalla de voto registrado -->
+  <div id="dv-voted" style="display:none;background:#fff;border-radius:16px;padding:2rem;width:100%;max-width:340px;text-align:center;">
+    <div id="dv-voted-icon" style="font-size:48px;margin-bottom:12px;">✓</div>
+    <div id="dv-voted-msg" style="font-size:20px;font-weight:500;color:#1a1a18;margin-bottom:8px;"></div>
+    <div style="font-size:13px;color:#888;">Voto registrado correctamente</div>
+  </div>
+
+</div>
+
 <!-- Pantalla de proyección -->
 <div class="projection-overlay" id="projection-overlay">
   <button class="proj-close" onclick="closeProjection()">Cerrar proyección ✕</button>
@@ -244,8 +353,14 @@
   <div class="proj-committee" id="proj-committee"></div>
 </div>
 
-<div class="app">
-  <h1>Panel de la Mesa Directiva</h1>
+<div class="app" id="app-main">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+    <h1 style="margin-bottom:0;">Panel de la Mesa Directiva</h1>
+    <div style="display:flex;gap:8px;">
+      <button onclick="openDelegateView()" style="font-size:12px;padding:5px 14px;border-radius:20px;border:0.5px solid rgba(255,255,255,0.5);background:rgba(255,255,255,0.15);color:#fff;cursor:pointer;">Vista delegado</button>
+      <button onclick="nuevaSesion()" style="font-size:12px;padding:5px 14px;border-radius:20px;border:0.5px solid rgba(255,255,255,0.5);background:rgba(255,255,255,0.15);color:#fff;cursor:pointer;">+ Nueva sesión</button>
+    </div>
+  </div>
   <div id="restore-indicator" style="display:none;text-align:center;font-size:12px;color:#27500A;background:#EAF3DE;padding:6px;border-radius:8px;">✓ Sesión restaurada</div>
 
   <div class="header-bar">
@@ -411,7 +526,23 @@
   <div class="panel full-row">
     <div class="vote-header">
       <div class="panel-title" style="margin-bottom:0;">Votación en curso</div>
-      <button class="clear-btn" onclick="resetVote()">Reiniciar votación</button>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="project-btn" id="btn-remote-vote" onclick="toggleRemoteVoting()">Votación remota</button>
+        <button class="clear-btn" onclick="resetVote()">Reiniciar</button>
+      </div>
+    </div>
+    <div id="remote-vote-panel" style="display:none;background:#E6F1FB;border-radius:8px;padding:10px 14px;margin-bottom:10px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+        <div>
+          <div style="font-size:12px;color:#0C447C;font-weight:500;">Votación remota activa</div>
+          <div style="font-size:11px;color:#185FA5;">Código de sala: <strong id="room-code-display">—</strong></div>
+          <div style="font-size:11px;color:#185FA5;">Votos recibidos: <strong id="remote-vote-count">0</strong></div>
+        </div>
+        <div style="display:flex;gap:6px;">
+          <button class="preset-btn" onclick="copyRoomLink()" style="border-color:#85B7EB;color:#185FA5;">Copiar enlace</button>
+          <button class="preset-btn" onclick="closeRemoteVoting()" style="border-color:#F09595;color:#791F1F;">Cerrar votación</button>
+        </div>
+      </div>
     </div>
     <input class="motion-input" id="motion-input" type="text" placeholder="Nombre de la moción o resolución a votar..." oninput="updateMotion()" />
     <div class="motion-preview" id="motion-preview"></div>
@@ -1349,6 +1480,108 @@ window.restoreVotes = function(v){
   updateEmitidos();updateQuorum();updateVoteResult();
 };
 
+// Nueva sesión — limpia todo y borra Firebase
+async function nuevaSesion(){
+  if(!confirm('¿Iniciar una nueva sesión? Se borrará toda la información actual.')) return;
+  // Reset attendance
+  COUNTRIES.forEach(c=>c.status='A');
+  // Reset speakers
+  speakers=[];
+  // Reset votes
+  votes={yes:0,no:0,abs:0};
+  p5Vetoed=new Set();
+  // Reset UI fields
+  document.getElementById('motion-input').value='';
+  document.getElementById('motion-preview').textContent='';
+  document.getElementById('committee-select').value='';
+  document.getElementById('committee-input').value='';
+  document.getElementById('search-input').value='';
+  searchFilter='';
+  isCSNU=false;
+  customMode=false;
+  window.currentSesionTipo='';
+  window.currentVoteType='simple';
+  // Reset session UI
+  document.getElementById('sesion-label').textContent='— Sin iniciar —';
+  document.getElementById('sesion-label').style.color='#1a1a18';
+  document.getElementById('sesion-estado').style.background='#f4f4f0';
+  ['btn-formal','btn-informal','btn-receso'].forEach(id=>document.getElementById(id).className='vtype-btn');
+  document.getElementById('panel-default').style.display='';
+  document.getElementById('panel-formal').style.display='none';
+  document.getElementById('panel-informal').style.display='none';
+  document.getElementById('panel-receso').style.display='none';
+  document.getElementById('panel-default-msg').textContent='Selecciona un tipo de sesión para ver las opciones correspondientes.';
+  // Reset vote display
+  ['yes','no','abs'].forEach(t=>document.getElementById('v-'+t).textContent=0);
+  ['yes','no','abs'].forEach(t=>document.getElementById('bar-'+t).style.width='0%');
+  document.getElementById('cs-notice').style.display='none';
+  document.getElementById('vote-type-row').style.display='';
+  // Reset timers
+  resetTimer();resetSesionTimer();
+  // Re-render
+  renderCountries();renderSpeakers();
+  updateEmitidos();updateQuorum();updateVoteResult();
+  // Clear Firebase
+  if(window.saveToFirebase) window.saveToFirebase();
+  // Show confirmation
+  const ind=document.getElementById('restore-indicator');
+  ind.textContent='✓ Nueva sesión iniciada';
+  ind.style.background='#E6F1FB';
+  ind.style.color='#0C447C';
+  ind.style.display='block';
+  setTimeout(()=>ind.style.display='none',3000);
+}
+
+// Votación remota
+let remoteVotingOpen = false;
+let delegateVotesReceived = {};
+
+function toggleRemoteVoting() {
+  if(!remoteVotingOpen) {
+    const motion = document.getElementById('motion-input').value || 'Sin nombre';
+    const paises = typeof getActiveMembers === 'function'
+      ? getActiveMembers().filter(c=>c.status==='PV').map(c=>c.name)
+      : [];
+    if(paises.length===0){ alert('Primero pasa lista y marca países como P+V.'); return; }
+    remoteVotingOpen = true;
+    delegateVotesReceived = {};
+    document.getElementById('btn-remote-vote').textContent='Cerrar votación remota';
+    document.getElementById('btn-remote-vote').style.background='#FCEBEB';
+    document.getElementById('btn-remote-vote').style.color='#791F1F';
+    document.getElementById('btn-remote-vote').style.borderColor='#F09595';
+    document.getElementById('remote-vote-status').style.display='block';
+    // Reset votes
+    votes={yes:0,no:0,abs:0};
+    refreshVoteDisplay();
+    if(window.openRemoteVoting) window.openRemoteVoting(motion, paises);
+    if(window.listenDelegateVotes) window.listenDelegateVotes(paises);
+  } else {
+    remoteVotingOpen = false;
+    document.getElementById('btn-remote-vote').textContent='Votación remota';
+    document.getElementById('btn-remote-vote').style.background='';
+    document.getElementById('btn-remote-vote').style.color='';
+    document.getElementById('btn-remote-vote').style.borderColor='';
+    document.getElementById('remote-vote-status').style.display='none';
+    if(window.closeRemoteVoting) window.closeRemoteVoting();
+  }
+}
+
+window.onDelegateVoteReceived = function(data) {
+  if(!data.tipo || !data.pais || !remoteVotingOpen) return;
+  // Avoid double counting
+  const prev = delegateVotesReceived[data.pais];
+  if(prev === data.tipo) return;
+  // Remove previous vote if exists
+  if(prev && votes[prev]>0) votes[prev]--;
+  // Add new vote
+  delegateVotesReceived[data.pais] = data.tipo;
+  votes[data.tipo]++;
+  refreshVoteDisplay();
+  // Update counter
+  const total = Object.keys(delegateVotesReceived).filter(k=>delegateVotesReceived[k]).length;
+  document.getElementById('remote-vote-count').textContent = total + ' votos';
+};
+
 // Auto-save on key actions — debounced 1s
 let saveTimer=null;
 function scheduleSave(){
@@ -1383,5 +1616,147 @@ setVoteType=function(t){ window.currentVoteType=t; _setVoteType(t); scheduleSave
 
 document.getElementById('motion-input')?.addEventListener('input', scheduleSave);
 </script>
+<!-- Pantalla del delegado -->
+<div id="app-delegado" style="display:none;min-height:100vh;background:#009EDB;font-family:system-ui,-apple-system,sans-serif;">
+
+  <!-- Pantalla de ingreso -->
+  <div id="delegado-login" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:2rem;gap:20px;">
+    <img src="https://flagcdn.com/h120/un.png" alt="ONU" style="height:80px;opacity:0.9;" onerror="this.style.display='none'" />
+    <div style="font-size:22px;font-weight:500;color:#fff;text-align:center;">Panel de la Mesa Directiva</div>
+    <div style="font-size:14px;color:rgba(255,255,255,0.75);text-align:center;">Ingresa con tu delegación</div>
+    <div style="background:#fff;border-radius:16px;padding:24px;width:100%;max-width:320px;display:flex;flex-direction:column;gap:14px;">
+      <div>
+        <label style="font-size:12px;color:#888;text-transform:uppercase;letter-spacing:0.05em;">Tu país</label>
+        <select id="delegado-pais" style="width:100%;margin-top:4px;font-size:15px;padding:10px;border-radius:8px;border:0.5px solid #ccc;background:#f4f4f0;color:#1a1a18;">
+          <option value="">— Seleccionar país —</option>
+        </select>
+      </div>
+      <button onclick="ingresarDelegado()" style="background:#009EDB;color:#fff;border:none;border-radius:8px;padding:12px;font-size:15px;font-weight:500;cursor:pointer;width:100%;">Ingresar a la sesión</button>
+    </div>
+  </div>
+
+  <!-- Pantalla de espera / votación -->
+  <div id="delegado-sala" style="display:none;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:2rem;gap:20px;">
+    <img src="https://flagcdn.com/h120/un.png" alt="ONU" style="height:60px;opacity:0.9;" onerror="this.style.display='none'" />
+    <div id="delegado-flag-display" style="font-size:80px;line-height:1;"></div>
+    <div id="delegado-nombre" style="font-size:24px;font-weight:500;color:#fff;text-align:center;"></div>
+    <div id="delegado-comite" style="font-size:13px;color:rgba(255,255,255,0.7);text-align:center;text-transform:uppercase;letter-spacing:0.08em;"></div>
+
+    <!-- Estado: esperando -->
+    <div id="delegado-esperando" style="background:rgba(255,255,255,0.15);border-radius:12px;padding:20px 32px;text-align:center;">
+      <div style="font-size:16px;color:#fff;margin-bottom:6px;">En sesión</div>
+      <div style="font-size:13px;color:rgba(255,255,255,0.7);">Esperando votación...</div>
+    </div>
+
+    <!-- Estado: votando -->
+    <div id="delegado-votando" style="display:none;width:100%;max-width:320px;">
+      <div style="background:#fff;border-radius:12px;padding:16px;margin-bottom:16px;text-align:center;">
+        <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">Moción en votación</div>
+        <div id="delegado-mocion" style="font-size:15px;font-weight:500;color:#1a1a18;"></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <button onclick="votarDelegado('yes')" id="btn-voto-yes" style="background:#EAF3DE;color:#27500A;border:2px solid #97C459;border-radius:12px;padding:18px;font-size:18px;font-weight:500;cursor:pointer;width:100%;">A favor</button>
+        <button onclick="votarDelegado('no')" id="btn-voto-no" style="background:#FCEBEB;color:#791F1F;border:2px solid #F09595;border-radius:12px;padding:18px;font-size:18px;font-weight:500;cursor:pointer;width:100%;">En contra</button>
+        <button onclick="votarDelegado('abs')" id="btn-voto-abs" style="background:#FAEEDA;color:#633806;border:2px solid #EF9F27;border-radius:12px;padding:18px;font-size:18px;font-weight:500;cursor:pointer;width:100%;">Abstención</button>
+      </div>
+    </div>
+
+    <!-- Estado: voto emitido -->
+    <div id="delegado-votado" style="display:none;background:rgba(255,255,255,0.15);border-radius:12px;padding:24px 32px;text-align:center;">
+      <div id="delegado-voto-confirmacion" style="font-size:18px;color:#fff;font-weight:500;"></div>
+      <div style="font-size:13px;color:rgba(255,255,255,0.7);margin-top:6px;">Voto registrado</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Delegate screen logic
+function poblarSelectPaises() {
+  const sel = document.getElementById('delegado-pais');
+  if(!sel) return;
+  // Use same COUNTRIES list from main app
+  if(typeof COUNTRIES !== 'undefined') {
+    COUNTRIES.forEach(c => {
+      const o = document.createElement('option');
+      o.value = c.name;
+      o.textContent = c.name;
+      sel.appendChild(o);
+    });
+  }
+}
+
+let miPais = null;
+let yaVote = false;
+
+function ingresarDelegado() {
+  const sel = document.getElementById('delegado-pais');
+  if(!sel.value) return;
+  miPais = sel.value;
+  document.getElementById('delegado-login').style.display='none';
+  document.getElementById('delegado-sala').style.display='flex';
+  document.getElementById('delegado-nombre').textContent = miPais;
+  // Show flag
+  const flagCode = typeof FLAGS !== 'undefined' ? FLAGS[miPais] : null;
+  if(flagCode) {
+    document.getElementById('delegado-flag-display').innerHTML =
+      `<img src="https://flagcdn.com/h120/${flagCode}.png" style="height:80px;border-radius:4px;" />`;
+  }
+}
+
+window.updateDelegadoUI = function(data) {
+  if(!data) return;
+  // Update committee name
+  const names = {'AG':'Asamblea General','CSNU':'Consejo de Seguridad','ECOSOC':'ECOSOC',
+    'CDH':'Consejo de Derechos Humanos','OIM':'OIM','ONUMUJERES':'ONU Mujeres'};
+  if(data.committee) document.getElementById('delegado-comite').textContent = names[data.committee]||data.committee;
+
+  if(data.open && !yaVote) {
+    // Show voting panel
+    document.getElementById('delegado-esperando').style.display='none';
+    document.getElementById('delegado-votado').style.display='none';
+    document.getElementById('delegado-votando').style.display='block';
+    document.getElementById('delegado-mocion').textContent = data.motion || 'Sin nombre';
+    // Reset buttons
+    ['yes','no','abs'].forEach(t => {
+      const btn = document.getElementById('btn-voto-'+t);
+      if(btn) btn.disabled = false;
+    });
+    yaVote = false;
+  } else if(!data.open) {
+    // Voting closed
+    yaVote = false;
+    document.getElementById('delegado-votando').style.display='none';
+    document.getElementById('delegado-votado').style.display='none';
+    document.getElementById('delegado-esperando').style.display='block';
+  }
+};
+
+window.votoDelegadoEmitido = function(tipo) {
+  yaVote = true;
+  document.getElementById('delegado-votando').style.display='none';
+  const labels = {'yes':'A favor','no':'En contra','abs':'Abstención'};
+  document.getElementById('delegado-voto-confirmacion').textContent = '✓ ' + (labels[tipo]||tipo);
+  document.getElementById('delegado-votado').style.display='block';
+};
+
+function votarDelegado(tipo) {
+  if(!miPais || yaVote) return;
+  yaVote = true;
+  ['yes','no','abs'].forEach(t => {
+    const btn = document.getElementById('btn-voto-'+t);
+    if(btn) btn.disabled = true;
+  });
+  if(window.emitirVoto) window.emitirVoto(tipo, miPais);
+  window.votoDelegadoEmitido(tipo);
+}
+
+// Init delegate screen if needed
+if(window.location.search.includes('delegado')) {
+  window.addEventListener('DOMContentLoaded', () => {
+    poblarSelectPaises();
+  });
+}
+</script>
+
 </body>
 </html>
