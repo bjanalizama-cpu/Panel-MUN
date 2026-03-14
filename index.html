@@ -899,13 +899,59 @@ function openProjectionCountdown(tipo){
 }
 
 function pauseFromProjection(){
-  if(projCountdownType==='receso') pauseCountdownR();
-  else pauseCountdown();
+  // Toggle pause/resume directly without touching UI buttons outside projection
+  if(projCountdownType==='receso'){
+    if(countdownRunningR){
+      clearInterval(countdownIntervalR);countdownRunningR=false;
+    } else {
+      countdownRunningR=true;
+      countdownIntervalR=setInterval(()=>{
+        if(countdownSecsR>0){
+          countdownSecsR--;
+          document.getElementById('countdown-display-r').textContent=fmtSesion(countdownSecsR);
+          updateProjectionCountdown();
+          if(countdownSecsR===0){clearInterval(countdownIntervalR);countdownRunningR=false;}
+        }
+      },1000);
+    }
+  } else {
+    if(countdownRunning){
+      clearInterval(countdownInterval);countdownRunning=false;
+    } else {
+      countdownRunning=true;
+      countdownInterval=setInterval(()=>{
+        if(countdownSecs>0){
+          countdownSecs--;
+          document.getElementById('countdown-display').textContent=fmtSesion(countdownSecs);
+          if(countdownSecs<=300) document.getElementById('countdown-display').style.color='#BA7517';
+          if(countdownSecs<=60) document.getElementById('countdown-display').style.color='#A32D2D';
+          updateProjectionCountdown();
+          if(countdownSecs===0){clearInterval(countdownInterval);countdownRunning=false;}
+        }
+      },1000);
+    }
+  }
 }
 function resetFromProjection(){
-  if(projCountdownType==='receso') stopCountdownR();
-  else stopCountdown();
-  document.getElementById('proj-countdown-timer').textContent='—';
+  if(projCountdownType==='receso'){
+    clearInterval(countdownIntervalR);countdownRunningR=false;
+    const val=parseInt(document.getElementById('countdown-input-r').value)||0;
+    countdownSecsR=val*60;
+    if(countdownSecsR>0){
+      document.getElementById('countdown-display-r').textContent=fmtSesion(countdownSecsR);
+      document.getElementById('countdown-display-r').style.display='block';
+    }
+  } else {
+    clearInterval(countdownInterval);countdownRunning=false;
+    const val=parseInt(document.getElementById('countdown-input').value)||0;
+    countdownSecs=val*60;
+    if(countdownSecs>0){
+      document.getElementById('countdown-display').textContent=fmtSesion(countdownSecs);
+      document.getElementById('countdown-display').style.color='#1a1a18';
+      document.getElementById('countdown-display').style.display='block';
+    }
+  }
+  updateProjectionCountdown();
 }
 function closeProjection(){
   projecting=false;
