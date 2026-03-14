@@ -326,9 +326,10 @@
       <button class="vtype-btn" onclick="setVoteType('calificada')" id="vt-calificada">Mayoría calificada (2/3)</button>
     </div>
     <div class="quorum-bar">
-      <div class="quorum-item"><div class="quorum-val" id="q-total">—</div><div class="quorum-lbl">Miembros con voto</div></div>
+      <div class="quorum-item"><div class="quorum-val" id="q-total">—</div><div class="quorum-lbl">P y votantes</div></div>
       <div class="quorum-item"><div class="quorum-val" id="q-quorum">—</div><div class="quorum-lbl">Quórum (mayoría)</div></div>
       <div class="quorum-item"><div class="quorum-val" id="q-needed">—</div><div class="quorum-lbl" id="q-needed-lbl">Votos necesarios</div></div>
+      <div class="quorum-item"><div class="quorum-val" id="q-emitidos" style="color:#185FA5;">0 / —</div><div class="quorum-lbl">Votos emitidos</div></div>
     </div>
     <div class="cs-notice" id="cs-notice" style="display:none;">
       Consejo de Seguridad: se requieren 9 votos afirmativos de 15. Ningún miembro P5 puede votar en contra.
@@ -338,17 +339,26 @@
       <div class="vote-col">
         <div class="vote-num yes" id="v-yes">0</div>
         <div class="vote-lbl">A favor</div>
-        <button class="vote-btn yes" onclick="vote('yes')">+ Voto</button>
+        <div style="display:flex;gap:4px;margin-top:7px;">
+          <button class="vote-btn yes" onclick="vote('yes')" style="flex:1;">+ Voto</button>
+          <button class="vote-btn yes" onclick="unvote('yes')" style="flex:0 0 36px;opacity:0.7;">−</button>
+        </div>
       </div>
       <div class="vote-col">
         <div class="vote-num no" id="v-no">0</div>
         <div class="vote-lbl">En contra</div>
-        <button class="vote-btn no" onclick="vote('no')">+ Voto</button>
+        <div style="display:flex;gap:4px;margin-top:7px;">
+          <button class="vote-btn no" onclick="vote('no')" style="flex:1;">+ Voto</button>
+          <button class="vote-btn no" onclick="unvote('no')" style="flex:0 0 36px;opacity:0.7;">−</button>
+        </div>
       </div>
       <div class="vote-col">
         <div class="vote-num abs" id="v-abs">0</div>
         <div class="vote-lbl">Abstención</div>
-        <button class="vote-btn abs" onclick="vote('abs')">+ Voto</button>
+        <div style="display:flex;gap:4px;margin-top:7px;">
+          <button class="vote-btn abs" onclick="vote('abs')" style="flex:1;">+ Voto</button>
+          <button class="vote-btn abs" onclick="unvote('abs')" style="flex:0 0 36px;opacity:0.7;">−</button>
+        </div>
       </div>
     </div>
     <div class="result-bar">
@@ -507,16 +517,39 @@ function toggleCountries(){
 function getVoters(){return getActiveMembers().filter(c=>c.status==='PV').length;}
 function updateQuorum(){
   const total=isCSNU?15:getVoters();
-  if(total===0){['q-total','q-quorum','q-needed'].forEach(id=>document.getElementById(id).textContent='—');return;}
+  if(total===0){
+    ['q-total','q-quorum','q-needed'].forEach(id=>document.getElementById(id).textContent='—');
+    return;
+  }
   document.getElementById('q-total').textContent=total;
   if(isCSNU){
     document.getElementById('q-quorum').textContent='9/15';
     document.getElementById('q-needed').textContent='9';
     document.getElementById('q-needed-lbl').textContent='Votos afirmativos requeridos';
   } else {
-    document.getElementById('q-quorum').textContent=Math.ceil(total/2)+1;
-    document.getElementById('q-needed').textContent=voteType==='simple'?'>50%':'>66%';
-    document.getElementById('q-needed-lbl').textContent=voteType==='simple'?'Mayoría de votos emitidos':'2/3 de votos emitidos';
+    const quorum=Math.ceil(total/2)+1;
+    document.getElementById('q-quorum').textContent=quorum;
+    const emitidos=votes.yes+votes.no;
+    if(voteType==='simple'){
+      const needed=emitidos>0?Math.floor(emitidos/2)+1:'—';
+      document.getElementById('q-needed').textContent=needed;
+      document.getElementById('q-needed-lbl').textContent='Votos a favor necesarios';
+    } else {
+      const needed=emitidos>0?Math.ceil(emitidos*2/3):'—';
+      document.getElementById('q-needed').textContent=needed;
+      document.getElementById('q-needed-lbl').textContent='Votos a favor necesarios (2/3)';
+    }
+  }
+  updateEmitidos();
+}
+
+function updateEmitidos(){
+  const total=isCSNU?15:getVoters();
+  const emitidos=votes.yes+votes.no+votes.abs;
+  const el=document.getElementById('q-emitidos');
+  if(el){
+    el.textContent=emitidos+' / '+(total||'—');
+    el.style.color=total>0&&emitidos>total?'#A32D2D':'#185FA5';
   }
 }
 function setVoteType(t){
@@ -984,7 +1017,16 @@ function updateVoteResult(){
   res.className='result-label '+(passed?'passed':'failed');
 }
 function vote(t){
+  const maxVotos=isCSNU?15:getVoters();
+  const totalActual=votes.yes+votes.no+votes.abs;
+  if(maxVotos>0&&totalActual>=maxVotos) return; // no más votos que P+V
   votes[t]++;
+  refreshVoteDisplay();
+}
+function unvote(t){
+  if(votes[t]>0){votes[t]--;refreshVoteDisplay();}
+}
+function refreshVoteDisplay(){
   document.getElementById('v-yes').textContent=votes.yes;
   document.getElementById('v-no').textContent=votes.no;
   document.getElementById('v-abs').textContent=votes.abs;
@@ -993,7 +1035,11 @@ function vote(t){
     document.getElementById('bar-yes').style.width=(votes.yes/total*100)+'%';
     document.getElementById('bar-no').style.width=(votes.no/total*100)+'%';
     document.getElementById('bar-abs').style.width=(votes.abs/total*100)+'%';
+  } else {
+    ['bar-yes','bar-no','bar-abs'].forEach(id=>document.getElementById(id).style.width='0%');
   }
+  updateEmitidos();
+  updateQuorum();
   updateVoteResult();
 }
 function resetVote(){
@@ -1003,6 +1049,8 @@ function resetVote(){
   document.getElementById('motion-input').value='';
   document.getElementById('motion-preview').textContent='';
   if(isCSNU)renderP5Grid();
+  updateEmitidos();
+  updateQuorum();
   updateVoteResult();
 }
 renderCountries();renderSpeakers();
