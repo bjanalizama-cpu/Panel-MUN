@@ -141,6 +141,7 @@
           committeeCustom: document.getElementById('committee-input')?.value || '',
           sesionTipo: window.currentSesionTipo || '',
           voteType: window.currentVoteType || 'simple',
+          codigo: window._sessionCode || null,
           updatedAt: new Date().toISOString()
         };
         await setDoc(sessionRef, data, { merge: true });
@@ -200,8 +201,17 @@
     }
 
     // Wait for DOM and app to be ready
-    window.addEventListener('load', () => {
+    window.addEventListener('load', async () => {
       setTimeout(loadFromFirebase, 500);
+      // Generate and show session code immediately
+      if(!isDelegado) {
+        try {
+          const code = await window.getOrCreateSessionCode();
+          window._sessionCode = code;
+          const el = document.getElementById('session-code-display');
+          if(el){ el.textContent = 'Código: ' + code; el.style.display=''; }
+        } catch(e) { console.warn('Code error:', e); }
+      }
     });
   </script>
   <style>
@@ -862,13 +872,7 @@ function onCommitteeChange(){
   if(isCSNU)renderP5Grid();
   if(val) loadCommitteeMembers(val);
   updateQuorum();updateVoteResult();
-  // Generate session code when committee selected
-  if(val && val !== 'otro' && window.getOrCreateSessionCode) {
-    window.getOrCreateSessionCode().then(code => {
-      const el = document.getElementById('session-code-display');
-      if(el){ el.textContent = 'Código: ' + code; el.style.display=''; }
-    });
-  }
+
 }
 function renderP5Grid(){
   const grid=document.getElementById('p5-grid');grid.innerHTML='';
@@ -1503,13 +1507,19 @@ async function nuevaSesion(){
   updateEmitidos();updateQuorum();updateVoteResult();
   // Clear Firebase and generate new code
   if(window.saveToFirebase) window.saveToFirebase();
-  document.getElementById('session-code-display').style.display='none';
-  document.getElementById('session-code-display').textContent='';
-  // Generate new code
-  if(window.getOrCreateSessionCode) {
-    // Force new code by clearing old one first
-    window.saveToFirebase && window.saveToFirebase();
-  }
+  // Generate brand new 4-digit code
+  const newCode = String(Math.floor(1000 + Math.random() * 9000));
+  window._sessionCode = newCode;
+  const codeEl = document.getElementById('session-code-display');
+  if(codeEl){ codeEl.textContent = 'Código: ' + newCode; codeEl.style.display=''; }
+  // Save new code to Firebase
+  setTimeout(async () => {
+    if(window.saveToFirebase) {
+      await window.saveToFirebase();
+      // Also update codigo field directly
+      const {getFirestore, doc, setDoc} = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+    }
+  }, 200);
   // Show confirmation
   const ind=document.getElementById('restore-indicator');
   ind.textContent='✓ Nueva sesión iniciada';
