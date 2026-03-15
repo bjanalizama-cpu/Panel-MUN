@@ -74,6 +74,9 @@
       onSnapshot(votingRef, (snap) => {
         if(!snap.exists()) return;
         const data = snap.data();
+        // Store latest data and dispatch event so delegate script can handle it
+        window._latestVotingData = data;
+        window.dispatchEvent(new CustomEvent('votingUpdate', { detail: data }));
         window.updateDelegadoUI && window.updateDelegadoUI(data);
       });
 
@@ -81,6 +84,7 @@
       onSnapshot(sessionRef, (snap) => {
         if(!snap.exists()) return;
         const data = snap.data();
+        window._latestSessionData = data;
         if(data.committee) window.updateDelegadoComite && window.updateDelegadoComite(data.committee);
       });
 
@@ -1771,14 +1775,20 @@ function ingresarDelegado() {
     document.getElementById('delegado-flag-display').innerHTML =
       `<img src="https://flagcdn.com/h120/${flagCode}.png" style="height:80px;border-radius:4px;box-shadow:0 4px 16px rgba(0,0,0,0.2);" />`;
   }
+  // Check if voting is already open when delegate joins
+  setTimeout(() => {
+    if(window._latestVotingData) applyVotingState(window._latestVotingData);
+  }, 500);
 }
 
 window.updateDelegadoComite = function(committee) {
   miComite = committee;
 };
 
-window.updateDelegadoUI = function(data) {
+function applyVotingState(data) {
   if(!data) return;
+  // Only update UI if delegate has already logged in
+  if(!miPais) return;
   if(data.open && !yaVote) {
     document.getElementById('delegado-esperando').style.display='none';
     document.getElementById('delegado-votado').style.display='none';
@@ -1794,7 +1804,12 @@ window.updateDelegadoUI = function(data) {
     document.getElementById('delegado-votado').style.display='none';
     document.getElementById('delegado-esperando').style.display='block';
   }
-};
+}
+
+window.updateDelegadoUI = function(data) { applyVotingState(data); };
+
+// Also listen for the custom event
+window.addEventListener('votingUpdate', (e) => { applyVotingState(e.detail); });
 
 window.votoDelegadoEmitido = function(tipo) {
   yaVote = true;
