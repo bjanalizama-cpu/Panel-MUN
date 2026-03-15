@@ -23,6 +23,31 @@
     const sessionRef = doc(db, "sesiones", SESSION_ID);
     const votingRef = doc(db, "votaciones", SESSION_ID);
 
+    // Generate or load 4-digit session code
+    window.getOrCreateSessionCode = async function() {
+      const snap = await getDoc(sessionRef);
+      if(snap.exists() && snap.data().codigo) {
+        return snap.data().codigo;
+      }
+      const code = String(Math.floor(1000 + Math.random() * 9000));
+      await setDoc(sessionRef, {codigo: code}, {merge: true});
+      return code;
+    };
+
+    // Verify code from delegate
+    window.verifySessionCode = async function(inputCode) {
+      const snap = await getDoc(sessionRef);
+      if(!snap.exists()) return false;
+      return snap.data().codigo === inputCode;
+    };
+
+    // Get current session data for delegate
+    window.getSessionForDelegate = async function() {
+      const snap = await getDoc(sessionRef);
+      if(!snap.exists()) return null;
+      return snap.data();
+    };
+
     // Detect if delegate mode (?delegado in URL)
     const isDelegado = window.location.search.includes('delegado');
     window.isDelegado = isDelegado;
@@ -300,82 +325,12 @@
 </head>
 <body>
 
-<!-- Vista Delegado -->
-<div id="delegate-view" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:#009EDB;z-index:2000;flex-direction:column;align-items:center;justify-content:center;padding:2rem;">
-  
-  <!-- Pantalla de entrada -->
-  <div id="dv-join" style="background:#fff;border-radius:16px;padding:2rem;width:100%;max-width:340px;text-align:center;">
-    <img src="https://flagcdn.com/h120/un.png" style="height:60px;margin-bottom:1rem;" onerror="this.style.display='none'" />
-    <div style="font-size:20px;font-weight:500;color:#1a1a18;margin-bottom:6px;">Panel de la Mesa Directiva</div>
-    <div style="font-size:13px;color:#888;margin-bottom:1.5rem;">Ingresa el código de sala y selecciona tu país</div>
-    <input id="dv-room-code" type="text" placeholder="Código de sala (ej: CSNU-2026)" style="width:100%;font-size:15px;padding:10px 12px;border-radius:8px;border:0.5px solid #ccc;margin-bottom:10px;text-align:center;text-transform:uppercase;" oninput="this.value=this.value.toUpperCase()" />
-    <select id="dv-country-select" style="width:100%;font-size:14px;padding:10px 12px;border-radius:8px;border:0.5px solid #ccc;margin-bottom:16px;">
-      <option value="">— Selecciona tu país —</option>
-    </select>
-    <button onclick="delegateJoin()" style="width:100%;padding:12px;background:#009EDB;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:500;cursor:pointer;">Unirse a la sesión</button>
-    <div id="dv-join-error" style="color:#A32D2D;font-size:12px;margin-top:8px;display:none;"></div>
-  </div>
 
-  <!-- Pantalla de espera -->
-  <div id="dv-waiting" style="display:none;background:#fff;border-radius:16px;padding:2rem;width:100%;max-width:340px;text-align:center;">
-    <div id="dv-flag-wait" style="font-size:14px;margin-bottom:8px;"></div>
-    <div id="dv-country-name" style="font-size:22px;font-weight:500;color:#1a1a18;margin-bottom:8px;"></div>
-    <div style="font-size:13px;color:#888;margin-bottom:1.5rem;">Esperando que la mesa abra la votación...</div>
-    <div style="width:40px;height:4px;background:#009EDB;border-radius:2px;margin:0 auto;animation:pulse 1.5s infinite;"></div>
-    <style>@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.3;}}</style>
-  </div>
-
-  <!-- Pantalla de votación -->
-  <div id="dv-voting" style="display:none;background:#fff;border-radius:16px;padding:2rem;width:100%;max-width:340px;text-align:center;">
-    <div id="dv-flag-vote" style="margin-bottom:8px;"></div>
-    <div id="dv-country-vote" style="font-size:18px;font-weight:500;color:#1a1a18;margin-bottom:4px;"></div>
-    <div style="font-size:12px;color:#888;margin-bottom:4px;">Votando:</div>
-    <div id="dv-motion-text" style="font-size:14px;font-weight:500;color:#1a1a18;margin-bottom:1.5rem;min-height:20px;"></div>
-    <button id="dv-btn-yes" onclick="delegateVote('yes')" style="width:100%;padding:14px;background:#EAF3DE;color:#27500A;border:2px solid #97C459;border-radius:10px;font-size:16px;font-weight:500;cursor:pointer;margin-bottom:8px;">A favor</button>
-    <button id="dv-btn-no" onclick="delegateVote('no')" style="width:100%;padding:14px;background:#FCEBEB;color:#791F1F;border:2px solid #F09595;border-radius:10px;font-size:16px;font-weight:500;cursor:pointer;margin-bottom:8px;">En contra</button>
-    <button id="dv-btn-abs" onclick="delegateVote('abs')" style="width:100%;padding:14px;background:#FAEEDA;color:#633806;border:2px solid #EF9F27;border-radius:10px;font-size:16px;font-weight:500;cursor:pointer;">Abstención</button>
-  </div>
-
-  <!-- Pantalla de voto registrado -->
-  <div id="dv-voted" style="display:none;background:#fff;border-radius:16px;padding:2rem;width:100%;max-width:340px;text-align:center;">
-    <div id="dv-voted-icon" style="font-size:48px;margin-bottom:12px;">✓</div>
-    <div id="dv-voted-msg" style="font-size:20px;font-weight:500;color:#1a1a18;margin-bottom:8px;"></div>
-    <div style="font-size:13px;color:#888;">Voto registrado correctamente</div>
-  </div>
-
-</div>
-
-<!-- Pantalla de proyección -->
-<div class="projection-overlay" id="projection-overlay">
-  <button class="proj-close" onclick="closeProjection()">Cerrar proyección ✕</button>
-  <img class="proj-un-logo" src="https://flagcdn.com/h120/un.png" alt="ONU" onerror="this.style.display='none'" />
-
-  <!-- Modo oradores (sesión formal) -->
-  <div id="proj-mode-speakers">
-    <div class="proj-flag" id="proj-flag"></div>
-    <div class="proj-country" id="proj-country">—</div>
-    <div class="proj-speaking">en uso de la palabra</div>
-    <div class="proj-timer" id="proj-timer">1:30</div>
-  </div>
-
-  <!-- Modo cuenta regresiva (sesión informal / receso) -->
-  <div id="proj-mode-countdown" style="display:none;">
-    <div class="proj-speaking" id="proj-countdown-label">Sesión informal</div>
-    <div class="proj-timer" id="proj-countdown-timer" style="font-size:100px;">—</div>
-    <div style="display:flex;gap:16px;justify-content:center;margin-top:16px;">
-      <button class="proj-btn" onclick="pauseFromProjection()">Pausar / Reanudar</button>
-      <button class="proj-btn" onclick="resetFromProjection()">Reiniciar</button>
-    </div>
-  </div>
-
-  <div class="proj-committee" id="proj-committee"></div>
-</div>
 
 <div class="app" id="app-main">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
     <h1 style="margin-bottom:0;">Panel de la Mesa Directiva</h1>
     <div style="display:flex;gap:8px;">
-      <button onclick="openDelegateView()" style="font-size:12px;padding:5px 14px;border-radius:20px;border:0.5px solid rgba(255,255,255,0.5);background:rgba(255,255,255,0.15);color:#fff;cursor:pointer;">Vista delegado</button>
       <button onclick="nuevaSesion()" style="font-size:12px;padding:5px 14px;border-radius:20px;border:0.5px solid rgba(255,255,255,0.5);background:rgba(255,255,255,0.15);color:#fff;cursor:pointer;">+ Nueva sesión</button>
     </div>
   </div>
@@ -907,6 +862,13 @@ function onCommitteeChange(){
   if(isCSNU)renderP5Grid();
   if(val) loadCommitteeMembers(val);
   updateQuorum();updateVoteResult();
+  // Generate session code when committee selected
+  if(val && val !== 'otro' && window.getOrCreateSessionCode) {
+    window.getOrCreateSessionCode().then(code => {
+      const el = document.getElementById('session-code-display');
+      if(el){ el.textContent = 'Código: ' + code; el.style.display=''; }
+    });
+  }
 }
 function renderP5Grid(){
   const grid=document.getElementById('p5-grid');grid.innerHTML='';
@@ -1539,8 +1501,15 @@ async function nuevaSesion(){
   // Re-render
   renderCountries();renderSpeakers();
   updateEmitidos();updateQuorum();updateVoteResult();
-  // Clear Firebase
+  // Clear Firebase and generate new code
   if(window.saveToFirebase) window.saveToFirebase();
+  document.getElementById('session-code-display').style.display='none';
+  document.getElementById('session-code-display').textContent='';
+  // Generate new code
+  if(window.getOrCreateSessionCode) {
+    // Force new code by clearing old one first
+    window.saveToFirebase && window.saveToFirebase();
+  }
   // Show confirmation
   const ind=document.getElementById('restore-indicator');
   ind.textContent='✓ Nueva sesión iniciada';
@@ -1638,25 +1607,28 @@ document.getElementById('motion-input')?.addEventListener('input', scheduleSave)
 <div id="app-delegado" style="display:none;min-height:100vh;background:#009EDB;font-family:system-ui,-apple-system,sans-serif;">
 
   <!-- Pantalla de ingreso -->
-  <div id="delegado-login" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:2rem;gap:20px;">
+  <div id="delegado-login" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:2rem;gap:16px;">
     <img src="https://flagcdn.com/h120/un.png" alt="ONU" style="height:80px;opacity:0.9;" onerror="this.style.display='none'" />
     <div style="font-size:22px;font-weight:500;color:#fff;text-align:center;">Panel de la Mesa Directiva</div>
-    <div style="font-size:14px;color:rgba(255,255,255,0.75);text-align:center;margin-bottom:4px;">Vista del delegado</div>
-    <div style="background:#fff;border-radius:16px;padding:24px;width:100%;max-width:340px;display:flex;flex-direction:column;gap:14px;">
-      <div>
-        <label style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.05em;">Comité</label>
-        <select id="delegado-comite-sel" style="width:100%;margin-top:4px;font-size:14px;padding:10px;border-radius:8px;border:0.5px solid #ccc;background:#f4f4f0;color:#1a1a18;">
-          <option value="">— Seleccionar comité —</option>
-          <option value="AG">Asamblea General</option>
-          <option value="CSNU">Consejo de Seguridad</option>
-          <option value="ECOSOC">ECOSOC</option>
-          <option value="CDH">Consejo de Derechos Humanos</option>
-          <option value="OIM">OIM</option>
-          <option value="ONUMUJERES">ONU Mujeres</option>
-        </select>
+    <div style="font-size:14px;color:rgba(255,255,255,0.75);text-align:center;">Vista del delegado</div>
+
+    <!-- Paso 1: código -->
+    <div id="paso-codigo" style="background:#fff;border-radius:16px;padding:24px;width:100%;max-width:340px;display:flex;flex-direction:column;gap:14px;">
+      <div style="text-align:center;">
+        <div style="font-size:13px;font-weight:500;color:#1a1a18;margin-bottom:4px;">Código de sesión</div>
+        <div style="font-size:12px;color:#888;">Ingresa el código de 4 dígitos que entrega la Mesa Directiva</div>
       </div>
+      <input id="input-codigo" type="number" maxlength="4" placeholder="0000"
+        style="width:100%;font-size:32px;text-align:center;padding:12px;border-radius:8px;border:0.5px solid #ccc;background:#f4f4f0;color:#1a1a18;letter-spacing:0.2em;" />
+      <div id="codigo-error" style="display:none;color:#A32D2D;font-size:12px;text-align:center;">Código incorrecto. Verifica con la Mesa Directiva.</div>
+      <button onclick="verificarCodigo()" style="background:#009EDB;color:#fff;border:none;border-radius:8px;padding:14px;font-size:15px;font-weight:500;cursor:pointer;width:100%;">Verificar código</button>
+    </div>
+
+    <!-- Paso 2: país (se muestra tras verificar código) -->
+    <div id="paso-pais" style="display:none;background:#fff;border-radius:16px;padding:24px;width:100%;max-width:340px;display:none;flex-direction:column;gap:14px;">
+      <div id="delegado-comite-confirmed" style="text-align:center;font-size:14px;font-weight:500;color:#009EDB;padding:8px;background:#E6F1FB;border-radius:8px;"></div>
       <div>
-        <label style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.05em;">País / Delegación</label>
+        <label style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.05em;">Tu país / Delegación</label>
         <select id="delegado-pais" style="width:100%;margin-top:4px;font-size:14px;padding:10px;border-radius:8px;border:0.5px solid #ccc;background:#f4f4f0;color:#1a1a18;">
           <option value="">— Seleccionar país —</option>
         </select>
@@ -1707,20 +1679,55 @@ const COMMITTEE_NAMES_D = {
   'OIM':'OIM','ONUMUJERES':'ONU Mujeres'
 };
 
+// Committee member lists (same as main app)
+const COMMITTEE_MEMBERS_D = {
+  'CSNU': ["Alemania","China","Ecuador","Estados Unidos","Francia","Grecia","Guyana","Panamá","Reino Unido","Corea del Sur","Rusia","Sierra Leona","Eslovenia","Somalia","Suiza"],
+  'AG': null,
+  'ONUMUJERES': null
+};
+
 let miPais = null;
 let miComite = null;
 let yaVote = false;
+let sessionData = null;
 
-function poblarSelectPaises() {
+async function verificarCodigo() {
+  const input = document.getElementById('input-codigo').value.trim();
+  if(input.length !== 4){ document.getElementById('codigo-error').style.display='block'; return; }
+  document.getElementById('codigo-error').style.display='none';
+
+  if(window.getSessionForDelegate) {
+    sessionData = await window.getSessionForDelegate();
+    if(!sessionData || sessionData.codigo !== input) {
+      document.getElementById('codigo-error').style.display='block';
+      return;
+    }
+    // Code verified - show country selector
+    miComite = sessionData.committee || '';
+    const comiteNombre = COMMITTEE_NAMES_D[miComite] || miComite || 'Comité';
+    document.getElementById('delegado-comite-confirmed').textContent = '✓ ' + comiteNombre;
+    poblarSelectPaisesPorComite(miComite);
+    document.getElementById('paso-codigo').style.display='none';
+    document.getElementById('paso-pais').style.display='flex';
+  }
+}
+
+function poblarSelectPaisesPorComite(comite) {
   const sel = document.getElementById('delegado-pais');
   if(!sel) return;
   sel.innerHTML = '<option value="">— Seleccionar país —</option>';
+
+  let lista = [];
   if(typeof COUNTRIES !== 'undefined') {
-    const sorted = [...COUNTRIES].sort((a,b)=>a.name.localeCompare(b.name,'es'));
-    sorted.forEach(c => {
+    // Get committee members
+    if(typeof COMMITTEE_MEMBERS !== 'undefined' && COMMITTEE_MEMBERS[comite]) {
+      lista = COMMITTEE_MEMBERS[comite];
+    } else {
+      lista = COUNTRIES.map(c=>c.name);
+    }
+    lista.sort((a,b)=>a.localeCompare(b,'es')).forEach(name => {
       const o = document.createElement('option');
-      o.value = c.name;
-      o.textContent = c.name;
+      o.value = name; o.textContent = name;
       sel.appendChild(o);
     });
   }
@@ -1728,24 +1735,15 @@ function poblarSelectPaises() {
 
 function ingresarDelegado() {
   const selPais = document.getElementById('delegado-pais');
-  const selComite = document.getElementById('delegado-comite-sel');
   if(!selPais.value){ alert('Selecciona tu país.'); return; }
-  if(!selComite.value){ alert('Selecciona el comité.'); return; }
-
   miPais = selPais.value;
-  miComite = selComite.value;
-
-  // Lock inputs permanently
   selPais.disabled = true;
-  selComite.disabled = true;
 
-  // Switch screens
   document.getElementById('delegado-login').style.display='none';
   document.getElementById('delegado-sala').style.display='flex';
 
-  // Show country info
   document.getElementById('delegado-nombre').textContent = miPais;
-  document.getElementById('delegado-comite-display').textContent = COMMITTEE_NAMES_D[miComite]||miComite;
+  document.getElementById('delegado-comite-display').textContent = COMMITTEE_NAMES_D[miComite]||miComite||'';
   const flagCode = typeof FLAGS !== 'undefined' ? FLAGS[miPais] : null;
   if(flagCode) {
     document.getElementById('delegado-flag-display').innerHTML =
@@ -1754,9 +1752,7 @@ function ingresarDelegado() {
 }
 
 window.updateDelegadoComite = function(committee) {
-  // Auto-select committee if chair already has one set
-  const sel = document.getElementById('delegado-comite-sel');
-  if(sel && !sel.disabled && committee) sel.value = committee;
+  miComite = committee;
 };
 
 window.updateDelegadoUI = function(data) {
