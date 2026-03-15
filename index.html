@@ -345,7 +345,9 @@
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
     <h1 style="margin-bottom:0;">Panel de la Mesa Directiva</h1>
     <div style="display:flex;gap:8px;">
+      <div id="session-code-display" style="background:rgba(255,255,255,0.25);border-radius:20px;padding:5px 16px;font-size:14px;font-weight:600;color:#fff;letter-spacing:0.15em;"></div>
       <button onclick="nuevaSesion()" style="font-size:12px;padding:5px 14px;border-radius:20px;border:0.5px solid rgba(255,255,255,0.5);background:rgba(255,255,255,0.15);color:#fff;cursor:pointer;">+ Nueva sesión</button>
+      <button onclick="window.open(window.location.pathname+'?delegado','_blank')" style="font-size:12px;padding:5px 14px;border-radius:20px;border:0.5px solid rgba(255,255,255,0.5);background:rgba(255,255,255,0.15);color:#fff;cursor:pointer;">Vista delegado</button>
     </div>
   </div>
   <div id="restore-indicator" style="display:none;text-align:center;font-size:12px;color:#27500A;background:#EAF3DE;padding:6px;border-radius:8px;">✓ Sesión restaurada</div>
